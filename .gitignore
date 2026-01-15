@@ -1,1 +1,6 @@
-123
+# Archivos temporales de simulación
+*.vcd
+*.log
+*.out
+*.tmp
+
