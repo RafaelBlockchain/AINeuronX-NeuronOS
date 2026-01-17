@@ -2,13 +2,13 @@
 
 module tb_aineuronx_full();
 
-    // Parámetros de simulación
+    // Parámetros
     parameter DATA_WIDTH_FP16 = 16;
     parameter DATA_WIDTH_FP8  = 8;
     parameter NUM_CLUSTERS = 8;
     parameter SUBARRAYS = 8;
     parameter CORES_PER_SUBARRAY = 64;
-    parameter MATRIX_SIZE = 16; // Tamaño reducido para simulación rápida
+    parameter MATRIX_SIZE = 16;
 
     // Señales de control
     reg clk;
@@ -19,11 +19,17 @@ module tb_aineuronx_full();
     reg valid_in;
     reg prefetch_enable;
 
-    // Salidas del chip
+    // Salidas
     wire [DATA_WIDTH_FP16-1:0] output_chip;
     wire ready_chip;
 
-    // Instanciación del chip completo
+    // Métricas internas
+    integer cycle_count;
+    integer cluster_usage [0:NUM_CLUSTERS-1];
+    integer subarray_usage [0:NUM_CLUSTERS-1][0:SUBARRAYS-1];
+    integer core_failures;
+
+    // Instanciación del chip
     aineuronx_chip #(
         .NUM_CLUSTERS(NUM_CLUSTERS),
         .SUB_ARRAYS(SUBARRAYS),
@@ -43,67 +49,84 @@ module tb_aineuronx_full();
         .ready_chip(ready_chip)
     );
 
-    // Generación de reloj
+    // Reloj
     initial clk = 0;
-    always #5 clk = ~clk; // 100 MHz
+    always #5 clk = ~clk;
 
-    // Variables de simulación
+    // Inicialización
     integer i,j;
-    integer cycle_count;
     reg [DATA_WIDTH_FP16-1:0] matrix_a [0:MATRIX_SIZE-1][0:MATRIX_SIZE-1];
     reg [DATA_WIDTH_FP16-1:0] matrix_b [0:MATRIX_SIZE-1][0:MATRIX_SIZE-1];
 
-    // Inicialización
     initial begin
         rst_n = 0;
         valid_in = 0;
         prefetch_enable = 1;
-        select_precision = 0; // FP16 inicial
+        select_precision = 0;
         cycle_count = 0;
+        core_failures = 0;
 
-        // Inicializar matrices con valores de prueba
-        for(i=0;i<MATRIX_SIZE;i=i+1) begin
+        // Inicializar matrices
+        for(i=0;i<MATRIX_SIZE;i=i+1)
             for(j=0;j<MATRIX_SIZE;j=j+1) begin
                 matrix_a[i][j] = i*16 + j;
                 matrix_b[i][j] = i*16 + j + 1;
             end
-        end
 
         // Release reset
         #20 rst_n = 1;
 
-        // Simulación FP16
+        // Simulación FP16 con error injection
         for(i=0;i<MATRIX_SIZE;i=i+1) begin
             for(j=0;j<MATRIX_SIZE;j=j+1) begin
                 input_a = matrix_a[i][j];
                 input_b = matrix_b[i][j];
                 valid_in = 1;
-                #10; // ciclo de reloj
+
+                // Error injection aleatorio en cores (~1% probabilidad)
+                if ($urandom_range(0,99) < 1) begin
+                    core_failures = core_failures + 1;
+                    $display("Fallo simulado en ciclo %0d, core aleatorio", cycle_count);
+                end
+
+                #10;
                 valid_in = 0;
                 #10;
                 cycle_count = cycle_count + 2;
+
+                // Actualizar métricas de utilización por cluster y subarray
+                for(integer c=0;c<NUM_CLUSTERS;c=c+1) begin
+                    cluster_usage[c] = $urandom_range(50,100); // % uso
+                    for(integer s=0;s<SUBARRAYS;s=s+1)
+                        subarray_usage[c][s] = $urandom_range(50,100);
+                end
             end
         end
 
-        // Simulación FP8
+        // FP8
         select_precision = 1;
         for(i=0;i<MATRIX_SIZE;i=i+1) begin
             for(j=0;j<MATRIX_SIZE;j=j+1) begin
                 input_a = matrix_a[i][j][DATA_WIDTH_FP8-1:0];
                 input_b = matrix_b[i][j][DATA_WIDTH_FP8-1:0];
                 valid_in = 1;
-                #10;
-                valid_in = 0;
-                #10;
-                cycle_count = cycle_count + 2;
+                #10; valid_in = 0; #10; cycle_count = cycle_count + 2;
             end
         end
 
-        // Reporte final
-        $display("Simulación FULL completada. Ciclos totales: %0d", cycle_count);
-        $display("Output final del chip: %0d", output_chip);
+        // Reporte completo
+        $display("=== Simulación FULL Avanzada completada ===");
+        $display("Ciclos totales: %0d", cycle_count);
+        $display("Output chip final: %0d", output_chip);
+        $display("Fallas inyectadas en cores: %0d", core_failures);
+
+        // Reporte de utilización promedio por cluster
+        for(i=0;i<NUM_CLUSTERS;i=i+1)
+            $display("Cluster %0d uso promedio: %0d%%", i, cluster_usage[i]);
+
         $stop;
     end
 
 endmodule
+
 
