@@ -68,11 +68,7 @@ Incluye:
 
 ## 🚀 Cómo ejecutar
 
-1. Clonar repositorio:
-
-```bash
-git clone git@github.com:<TU_USUARIO>/AINeuronX.git
-cd AINeuronX
+1. Clonar repositorio
 
 2. Hacer pipeline completo:
 chmod +x *.sh
