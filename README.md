@@ -32,8 +32,6 @@ AINeuronX/
 └─ README.md
 
 
----
-
 ## ⚡ Módulos RTL incluidos
 
 1. **tensor_core_array.v** — Núcleo tensorial principal.  
