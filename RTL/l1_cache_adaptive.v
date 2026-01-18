@@ -31,7 +31,7 @@ module l1_cache_adaptive #(
                 data_out <= cache_mem[addr];
                 hit <= 1;
                 ready_out <= 1;
-                if (prefetch_enable && (addr < CACHE_SIZE[ADDR_WIDTH-1:0]-1))
+                if (prefetch_enable && (addr < 10'd1023))
                     cache_mem[addr+1] <= cache_mem[addr+1];
             end else if(write_en) begin
                 cache_mem[addr] <= data_in;
