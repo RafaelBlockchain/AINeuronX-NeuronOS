@@ -20,7 +20,9 @@ module compute_cluster #(
 );
     wire [DATA_WIDTH_FP16-1:0] tca_out;
     wire tca_ready;
-
+    wire hit_dummy;
+    .hit(hit_dummy),
+  
     tensor_core_array #(
         .SUB_ARRAYS(SUB_ARRAYS),
         .CORES_PER_SUBARRAY(CORES_PER_SUBARRAY),
