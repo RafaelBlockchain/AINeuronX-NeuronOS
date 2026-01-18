@@ -5,6 +5,7 @@
 module dma_engine #(
     parameter DATA_WIDTH = 16,
     parameter BLOCK_SIZE = 64
+    
 )(
     input  wire clk,
     input  wire rst_n,
