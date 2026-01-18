@@ -22,7 +22,6 @@ module compute_cluster #(
     wire tca_ready;
     wire hit_dummy;
     
-  
     tensor_core_array #(
         .SUB_ARRAYS(SUB_ARRAYS),
         .CORES_PER_SUBARRAY(CORES_PER_SUBARRAY),
