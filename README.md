@@ -123,6 +123,68 @@ Proyecto AINeuronX — Simulación avanzada de AI-native accelerator + NeuronOS
 
 ---
 
+# AINeuronX
+
+## Descripción
+AINeuronX es un acelerador de IA de próxima generación diseñado con arquitectura “AI-native silicon”, optimizado para FP16/FP8, alto paralelismo, prefetch adaptativo y escalabilidad multi-cluster. Incluye un stack completo de software NeuronOS para ejecución de kernels, gestión de memoria, scheduling jerárquico y control de hardware.
+
+Este repositorio incluye:
+- Módulos RTL simulados del chip completo.
+- Testbench avanzado con error injection y métricas detalladas.
+- Scripts Python para análisis de logs y generación de heatmaps, TFLOPS y reportes.
+- Infraestructura lista para FP16 y FP8, prefetch adaptativo y resiliencia de cores.
+
+---
+
+## Contenido del Repositorio
+
+### RTL Modules
+- `tensor_core_array.v` — Tensor Core Array principal.
+- `tensor_subarray.v` — Subarrays de 64 cores cada uno.
+- `l1_cache_adaptive.v` — Cache L1 con prefetch dinámico.
+- `compute_cluster.v` — Cluster de cómputo completo.
+- `aineuronx_chip.v` — Chip completo integrado.
+- Módulos adicionales recomendados:
+  - `l2_cache.v` — Cache L2 por cluster.
+  - `memory_controller.v` — Control de acceso a DRAM.
+  - `dma_engine.v` — Movimientos de bloques de datos.
+  - `crossbar_network.v` — Interconexión L1/L2 y clusters.
+  - `nvlink_pcie_link.v` — Simulación de enlaces externos.
+  - `power_model.v` — Estimación de consumo y gestión de energía.
+  - `error_injection.v` — Inyección de fallos para resiliencia.
+  - `clock_reset_gen.v` — Generador de reloj y reset sincronizado.
+
+---
+
+### Testbench
+- `tb_aineuronx_full.v` — Testbench completo del chip:
+  - Integración de todos los módulos RTL.
+  - Error injection aleatorio (~1% cores).
+  - Métricas detalladas de utilización por cluster y subarray.
+  - Soporte FP16/FP8 y prefetch adaptativo.
+  - Reporte de ciclos, output final, fallas inyectadas y utilización promedio.
+
+---
+
+### Scripts Python
+- `python_api/analyze_full.py` — Analiza logs del testbench:
+  - Genera heatmaps de utilización.
+  - Calcula TFLOPS FP16 / FP8 sostenidos.
+  - Latencias y throughput por cluster.
+  - Exportación a CSV / PDF para whitepaper y PPA.
+
+- `python_api/build.sh` — Compila y prepara entorno.
+- `python_api/run_runtime.sh` — Ejecuta simulación completa.
+- `python_api/run_python_tests.sh` — Corre scripts de análisis automáticamente.
+
+---
+
+### Ejecución
+1. Simular RTL con tu simulator preferido (Vivado, ModelSim, etc.):
+```bash
+# Desde la carpeta testbench
+vlog ../rtl/*.v
+vsim tb_aineuronx_full
 
 
 
