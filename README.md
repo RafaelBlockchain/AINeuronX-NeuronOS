@@ -18,20 +18,6 @@ Incluye:
 - Documentación técnica y whitepaper
 
 
-## 📂 Estructura del repositorio
-AINeuronX/
-├─ rtl/ # Módulos RTL (.v)
-├─ testbench/ # Testbenches por módulo y completo
-├─ python_api/ # Scripts Python de análisis
-│ ├─ analyze_full.py
-│ └─ helpers/ # Funciones auxiliares opcionales
-├─ build.sh # Compila todos los módulos RTL
-├─ run_runtime.sh # Ejecuta testbench completo
-├─ run_analysis.sh # Genera PDF y CSV con métricas
-├─ run_all.sh # Pipeline completo: build → sim → análisis
-└─ README.md
-
-
 ## ⚡ Módulos RTL incluidos
 
 1. **tensor_core_array.v** — Núcleo tensorial principal.  
