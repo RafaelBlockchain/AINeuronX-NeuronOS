@@ -18,7 +18,7 @@ module dma_engine #(
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin done <= 0; mem_data_out <= 0; end
         else if(start) begin
-            for(i=0;i<BLOCK_SIZE;i=i+1) mem_data_out <= mem_data_in + i;
+            for(i=0;i<BLOCK_SIZE;i=i+1) mem_data_out <= mem_data_in + DATA_WIDTH'(i);
             done <= 1;
         end else done <= 0;
     end
