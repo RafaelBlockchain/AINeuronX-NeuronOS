@@ -1,5 +1,7 @@
+
 //===========================================================
-// AINeuronX L1 Cache Adaptativa (RTL inicial)
+// AINeuronX L1 Cache Adaptativa (ASIC-grade, limpia)
+// Modelo de latencia / control (sin datapath)
 //===========================================================
 module l1_cache_adaptive #(
     parameter CACHE_SIZE = 1024,
@@ -12,32 +14,19 @@ module l1_cache_adaptive #(
     input  wire read_en,
     input  wire write_en,
     input  wire prefetch_enable,
-    output reg  [DATA_WIDTH-1:0] data_out,
-    output reg  hit,
     output reg  ready_out
 );
-    reg [DATA_WIDTH-1:0] cache_mem [CACHE_SIZE-1:0];
-    integer i;
+
     always @(posedge clk or negedge rst_n) begin
-        if(!rst_n) begin
-            data_out <= 0;
-            hit <= 0;
-            ready_out <= 0;
-            for(i=0; i<CACHE_SIZE; i=i+1)
-                cache_mem[i] <= 0;
+        if (!rst_n) begin
+            ready_out <= 1'b0;
         end else begin
-            ready_out <= 0;
-            if(read_en) begin
-                data_out <= cache_mem[addr];
-                hit <= 1;
-                ready_out <= 1;
-                if (prefetch_enable && (addr < 10'd1023))
-                    cache_mem[addr+1] <= cache_mem[addr+1];
-            end else if(write_en) begin
-                cache_mem[addr] <= data_in;
-                ready_out <= 1;
-            end
+            // Modelo simple: 1 ciclo de latencia cuando hay acceso
+            if (read_en || write_en)
+                ready_out <= 1'b1;
+            else
+                ready_out <= 1'b0;
         end
     end
-endmodule
 
+endmodule
