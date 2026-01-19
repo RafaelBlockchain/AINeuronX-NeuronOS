@@ -18,9 +18,11 @@ module compute_cluster #(
     output wire [DATA_WIDTH_FP16-1:0] output_c,
     output wire ready_out
 );
+
+    // ================= Tensor Core Array =================
     wire [DATA_WIDTH_FP16-1:0] tca_out;
     wire tca_ready;
-    
+
     tensor_core_array #(
         .SUB_ARRAYS(SUB_ARRAYS),
         .CORES_PER_SUBARRAY(CORES_PER_SUBARRAY),
@@ -37,11 +39,13 @@ module compute_cluster #(
         .ready_out(tca_ready)
     );
 
+    // ================= L1 Caches =================
     wire [DATA_WIDTH_FP16-1:0] l1_out [SUB_ARRAYS-1:0];
     wire [SUB_ARRAYS-1:0] l1_ready;
+
     genvar i;
     generate
-        for(i=0; i<SUB_ARRAYS; i=i+1) begin : L1_CACHES
+        for (i = 0; i < SUB_ARRAYS; i = i + 1) begin : L1_CACHES
             l1_cache_adaptive #(
                 .CACHE_SIZE(CACHE_SIZE),
                 .DATA_WIDTH(DATA_WIDTH_FP16)
@@ -51,19 +55,34 @@ module compute_cluster #(
                 .data_in(input_a),
                 .addr(i),
                 .read_en(valid_in),
-                .write_en(0),
+                .write_en(1'b0),
                 .prefetch_enable(prefetch_enable),
                 .data_out(l1_out[i]),
-                .hit(),
+                .hit(),                     // OK: ya resuelto
                 .ready_out(l1_ready[i])
             );
         end
     endgenerate
 
+    // ================= Reducción segura de ready =================
+    reg l1_ready_and;
+    integer k;
+
+    always @(*) begin
+        l1_ready_and = 1'b1;
+        for (k = 0; k < SUB_ARRAYS; k = k + 1) begin
+            l1_ready_and = l1_ready_and & l1_ready[k];
+        end
+    end
+
+    // ================= Output =================
     wire [DATA_WIDTH_FP16-1:0] controller_in;
-    assign controller_in = l1_out[0]+l1_out[1]+l1_out[2]+l1_out[3]+
-                           l1_out[4]+l1_out[5]+l1_out[6]+l1_out[7];
+    assign controller_in =
+          l1_out[0] + l1_out[1] + l1_out[2] + l1_out[3]
+        + l1_out[4] + l1_out[5] + l1_out[6] + l1_out[7];
+
     assign output_c = tca_out;
-    assign ready_out = tca_ready & &l1_ready;
+    assign ready_out = tca_ready & l1_ready_and;
+
 endmodule
 
