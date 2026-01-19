@@ -62,7 +62,6 @@ module compute_cluster #(
                 .write_en(1'b0),
                 .prefetch_enable(prefetch_enable),
                 .data_out(l1_out[i]),
-                .hit(),                  // PINCONNECTEMPTY resuelto
                 .ready_out(l1_ready[i])
             );
         end
@@ -87,7 +86,6 @@ module compute_cluster #(
     // =======================================================
     // Agregación de datos (placeholder de controlador)
     // =======================================================
-    wire [DATA_WIDTH_FP16-1:0] controller_in;
 
     assign controller_in =
           l1_out[0] + l1_out[1] + l1_out[2] + l1_out[3]
