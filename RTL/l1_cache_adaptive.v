@@ -1,6 +1,6 @@
 //===========================================================
 // AINeuronX L1 Cache Adaptativa
-// Verilator + ASIC clean (warnings = 0)
+// ASIC-grade, Verilator clean
 //===========================================================
 module l1_cache_adaptive #(
     parameter CACHE_SIZE = 1024,
@@ -17,7 +17,7 @@ module l1_cache_adaptive #(
 );
 
     // -------------------------------------------------------
-    // Dummy consumption (OBLIGATORIO para Verilator)
+    // Dummy consumption (para Verilator / síntesis)
     // -------------------------------------------------------
     localparam integer CACHE_DEPTH_USED = CACHE_SIZE;
 
@@ -25,7 +25,7 @@ module l1_cache_adaptive #(
     assign dummy_use = ^data_in ^ ^addr ^ prefetch_enable ^ CACHE_DEPTH_USED[0];
 
     // -------------------------------------------------------
-    // Modelo de latencia
+    // Modelo simple de latencia
     // -------------------------------------------------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
