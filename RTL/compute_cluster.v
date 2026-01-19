@@ -84,14 +84,6 @@ module compute_cluster #(
     assign l1_ready_and = l1_ready_acc;
 
     // =======================================================
-    // Agregación de datos (placeholder de controlador)
-    // =======================================================
-
-    assign controller_in =
-          l1_out[0] + l1_out[1] + l1_out[2] + l1_out[3]
-        + l1_out[4] + l1_out[5] + l1_out[6] + l1_out[7];
-
-    // =======================================================
     // Salidas finales
     // =======================================================
     assign output_c = tca_out;
