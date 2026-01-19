@@ -1,5 +1,6 @@
 //===========================================================
 // AINeuronX Compute Cluster (RTL integrado)
+// Verilator-safe / Portable / Escalable
 //===========================================================
 module compute_cluster #(
     parameter SUB_ARRAYS = 8,
@@ -19,7 +20,9 @@ module compute_cluster #(
     output wire ready_out
 );
 
-    // ================= Tensor Core Array =================
+    // =======================================================
+    // Tensor Core Array
+    // =======================================================
     wire [DATA_WIDTH_FP16-1:0] tca_out;
     wire tca_ready;
 
@@ -39,9 +42,11 @@ module compute_cluster #(
         .ready_out(tca_ready)
     );
 
-    // ================= L1 Caches =================
-    wire [DATA_WIDTH_FP16-1:0] l1_out [SUB_ARRAYS-1:0];
-    wire [SUB_ARRAYS-1:0] l1_ready;
+    // =======================================================
+    // L1 Caches (uno por subarray)
+    // =======================================================
+    wire [DATA_WIDTH_FP16-1:0] l1_out   [0:SUB_ARRAYS-1];
+    wire [SUB_ARRAYS-1:0]      l1_ready;
 
     genvar i;
     generate
@@ -58,31 +63,41 @@ module compute_cluster #(
                 .write_en(1'b0),
                 .prefetch_enable(prefetch_enable),
                 .data_out(l1_out[i]),
-                .hit(),                     // OK: ya resuelto
+                .hit(),                  // PINCONNECTEMPTY resuelto
                 .ready_out(l1_ready[i])
             );
         end
     endgenerate
 
-    // ================= Reducción segura de ready =================
-    reg l1_ready_and;
+    // =======================================================
+    // Reducción segura de ready (Verilator-safe)
+    // =======================================================
+    wire l1_ready_and;
+    reg  l1_ready_acc;
     integer k;
 
     always @(*) begin
-        l1_ready_and = 1'b1;
+        l1_ready_acc = 1'b1;
         for (k = 0; k < SUB_ARRAYS; k = k + 1) begin
-            l1_ready_and = l1_ready_and & l1_ready[k];
+            l1_ready_acc = l1_ready_acc & l1_ready[k];
         end
     end
 
-    // ================= Output =================
+    assign l1_ready_and = l1_ready_acc;
+
+    // =======================================================
+    // Agregación de datos (placeholder de controlador)
+    // =======================================================
     wire [DATA_WIDTH_FP16-1:0] controller_in;
+
     assign controller_in =
           l1_out[0] + l1_out[1] + l1_out[2] + l1_out[3]
         + l1_out[4] + l1_out[5] + l1_out[6] + l1_out[7];
 
+    // =======================================================
+    // Salidas finales
+    // =======================================================
     assign output_c = tca_out;
     assign ready_out = tca_ready & l1_ready_and;
 
 endmodule
-
