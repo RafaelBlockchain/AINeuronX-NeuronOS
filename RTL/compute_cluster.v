@@ -24,7 +24,6 @@ module compute_cluster #(
     // =======================================================
     wire [DATA_WIDTH_FP16-1:0] tca_out;
     wire tca_ready;
-    wire l1_hit_dummy;
 
     tensor_core_array #(
         .SUB_ARRAYS(SUB_ARRAYS),
@@ -43,10 +42,9 @@ module compute_cluster #(
     );
 
     // =======================================================
-    // L1 Caches (uno por subarray)
+    // L1 Caches (modelo de control / latencia)
     // =======================================================
-    wire [DATA_WIDTH_FP16-1:0] l1_out   [0:SUB_ARRAYS-1];
-    wire [SUB_ARRAYS-1:0]      l1_ready;
+    wire [SUB_ARRAYS-1:0] l1_ready;
 
     genvar i;
     generate
@@ -62,8 +60,6 @@ module compute_cluster #(
                 .read_en(valid_in),
                 .write_en(1'b0),
                 .prefetch_enable(prefetch_enable),
-                .hit(l1_hit_dummy),
-                .data_out(l1_out[i]),
                 .ready_out(l1_ready[i])
             );
         end
@@ -72,8 +68,7 @@ module compute_cluster #(
     // =======================================================
     // Reducción segura de ready (Verilator-safe)
     // =======================================================
-    wire l1_ready_and;
-    reg  l1_ready_acc;
+    reg l1_ready_acc;
     integer k;
 
     always @(*) begin
@@ -83,12 +78,10 @@ module compute_cluster #(
         end
     end
 
-    assign l1_ready_and = l1_ready_acc;
-
     // =======================================================
     // Salidas finales
     // =======================================================
     assign output_c = tca_out;
-    assign ready_out = tca_ready & l1_ready_and;
+    assign ready_out = tca_ready & l1_ready_acc;
 
 endmodule
