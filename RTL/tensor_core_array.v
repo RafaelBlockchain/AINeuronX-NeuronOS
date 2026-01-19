@@ -4,6 +4,15 @@
 // Soporte FP8 y FP16, pipeline de multiplicación de matrices
 // Control de acceso a cache L1
 //===========================================================
+reg ready_acc;
+integer i;
+always @(*) begin
+    ready_acc = 1'b1;
+    for (i = 0; i < SUB_ARRAYS; i = i + 1) begin
+        ready_acc = ready_acc & sub_ready[i];
+    end
+end
+
 module tensor_core_array #(
     parameter SUB_ARRAYS = 8,
     parameter CORES_PER_SUBARRAY = 64,
@@ -46,5 +55,7 @@ module tensor_core_array #(
                       subarray_out[4] + subarray_out[5] + subarray_out[6] + subarray_out[7];
 
     assign ready_out = &sub_ready;
+    assign ready_out = ready_acc;
+
 endmodule
 
