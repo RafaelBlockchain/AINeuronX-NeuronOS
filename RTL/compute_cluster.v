@@ -1,6 +1,5 @@
 //===========================================================
 // AINeuronX Compute Cluster (RTL integrado)
-// Verilator-safe | Portable | Escalable
 //===========================================================
 module compute_cluster #(
     parameter SUB_ARRAYS = 8,
