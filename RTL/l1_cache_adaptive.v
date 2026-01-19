@@ -1,7 +1,6 @@
-
 //===========================================================
-// AINeuronX L1 Cache Adaptativa (ASIC-grade, limpia)
-// Modelo de latencia / control (sin datapath)
+// AINeuronX L1 Cache Adaptativa
+// Modelo de latencia / control (Verilator + ASIC clean)
 //===========================================================
 module l1_cache_adaptive #(
     parameter CACHE_SIZE = 1024,
@@ -17,11 +16,21 @@ module l1_cache_adaptive #(
     output reg  ready_out
 );
 
+    // -------------------------------------------------------
+    // Dummy consumption (elimina UNUSEDPARAM / UNUSEDSIGNAL)
+    // -------------------------------------------------------
+    localparam integer CACHE_DEPTH_USED = CACHE_SIZE;
+
+    wire dummy_use;
+    assign dummy_use = ^data_in ^ ^addr ^ prefetch_enable ^ CACHE_DEPTH_USED[0];
+
+    // -------------------------------------------------------
+    // Modelo de latencia
+    // -------------------------------------------------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             ready_out <= 1'b0;
         end else begin
-            // Modelo simple: 1 ciclo de latencia cuando hay acceso
             if (read_en || write_en)
                 ready_out <= 1'b1;
             else
