@@ -19,11 +19,19 @@ module aineuronx_chip #(
     output wire [DATA_WIDTH_FP16-1:0] output_chip,
     output wire ready_chip
 );
-    wire [DATA_WIDTH_FP16-1:0] cluster_out [NUM_CLUSTERS-1:0];
-    wire [NUM_CLUSTERS-1:0] cluster_ready;
+
+    // =======================================================
+    // Señales por cluster
+    // =======================================================
+    wire [DATA_WIDTH_FP16-1:0] cluster_out   [0:NUM_CLUSTERS-1];
+    wire                       cluster_ready [0:NUM_CLUSTERS-1];
+
+    // =======================================================
+    // Instanciación de clusters
+    // =======================================================
     genvar i;
     generate
-        for(i=0; i<NUM_CLUSTERS; i=i+1) begin : CLUSTERS
+        for (i = 0; i < NUM_CLUSTERS; i = i + 1) begin : CLUSTERS
             compute_cluster #(
                 .SUB_ARRAYS(SUB_ARRAYS),
                 .CORES_PER_SUBARRAY(CORES_PER_SUBARRAY),
@@ -44,8 +52,27 @@ module aineuronx_chip #(
         end
     endgenerate
 
-    assign output_chip = cluster_out[0]+cluster_out[1]+cluster_out[2]+cluster_out[3]+
-                         cluster_out[4]+cluster_out[5]+cluster_out[6]+cluster_out[7];
-    assign ready_chip = &cluster_ready;
+    // =======================================================
+    // Agregación de datos (placeholder simple)
+    // =======================================================
+    assign output_chip =
+          cluster_out[0] + cluster_out[1] + cluster_out[2] + cluster_out[3]
+        + cluster_out[4] + cluster_out[5] + cluster_out[6] + cluster_out[7];
+
+    // =======================================================
+    // Reducción segura de ready (Verilator-safe)
+    // =======================================================
+    reg ready_acc;
+    integer k;
+
+    always @(*) begin
+        ready_acc = 1'b1;
+        for (k = 0; k < NUM_CLUSTERS; k = k + 1) begin
+            ready_acc = ready_acc & cluster_ready[k];
+        end
+    end
+
+    assign ready_chip = ready_acc;
+
 endmodule
 
