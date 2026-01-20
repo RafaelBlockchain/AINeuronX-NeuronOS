@@ -2,6 +2,7 @@
 // Error Injection (RTL inicial)
 // Introduce errores para pruebas de resiliencia
 //===========================================================
+`timescale 1ns/1ps
 module error_injection #(
     parameter DATA_WIDTH = 16
 )(
