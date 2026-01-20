@@ -1,19 +1,19 @@
 #!/bin/bash
 set -e
 
-echo "▶ Cleaning previous build..."
+echo "▸ Cleaning previous build..."
 rm -rf obj_dir
 
-echo "▶ Verilating RTL + TB..."
+echo "▸ Verilating RTL + TB..."
 verilator -Wall --cc rtl/*.sv \
-  --exe tb/tb_aineuronx_full_pipeline.sv \
+  --exe tb/main.cpp tb/tb_aineuronx_full_pipeline.sv \
   --top-module aineuronx_chip \
   --timing
 
-echo "▶ Compiling C++ simulation..."
+echo "▸ Compiling C++ simulation..."
 make -C obj_dir -f Vaineuronx_chip.mk
 
-echo "▶ Running simulation..."
+echo "▸ Running simulation..."
 ./obj_dir/Vaineuronx_chip
 
-echo "✔ Simulation finished"
+echo "✔ Simulation finished successfully"
