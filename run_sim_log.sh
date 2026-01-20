@@ -8,7 +8,7 @@ LOGFILE="simulation_log.txt"
 
 # 1️⃣ Agregar timescale 1ns/1ps a todos los RTL si no existe
 echo "🔹 Revisando y agregando \`timescale a RTL..."
-for f in rtl/*.v; do
+for f in rtl/*.sv; do
     if ! grep -q "`timescale" "$f"; then
         sed -i '1i`timescale 1ns/1ps' "$f"
         echo "  ✔ timescale agregado a $f"
@@ -22,7 +22,7 @@ rm -f "$LOGFILE"
 
 # 3️⃣ Compilar RTL + testbench con Verilator
 echo "🔹 Compilando con Verilator..."
-verilator -Wall --cc rtl/*.v \
+verilator -Wall --cc rtl/*.sv \
   --exe tb/tb_aineuronx_full_pipeline.sv \
   --top-module aineuronx_chip \
   --timing
