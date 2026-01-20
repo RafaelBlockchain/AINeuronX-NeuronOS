@@ -2,6 +2,7 @@
 // Sub-array module: 64 Tensor Cores
 // Simple multiply-accumulate pipeline
 //===========================================================
+`timescale 1ns/1ps
 module tensor_subarray #(
     parameter CORES = 64,
     parameter DATA_WIDTH_FP8 = 8,
