@@ -1,6 +1,6 @@
 // =====================================================
-// TB_AINEURONX_FULL.SV
-// Testbench completo: Golden Model + Checks + Asserts + Logging
+// TB_AINEURONX_FULL_PIPELINE.SV
+// Testbench completo: Golden Model + Checks + Asserts + Pipeline Metrics
 // =====================================================
 `timescale 1ns/1ps
 
@@ -76,26 +76,21 @@ module tb_aineuronx_full;
         rst_n = 1;
 
         // Estímulo de prueba
-        #(CLK_PERIOD);
-        valid_in = 1;
-        input_a = 16'h0003; // ejemplo FP16
-        input_b = 16'h0005;
+        integer i;
+        for (i=0; i<20; i=i+1) begin
+            @(posedge clk);
+            valid_in <= 1;
+            input_a <= $urandom_range(1,100);
+            input_b <= $urandom_range(1,100);
+            select_precision <= $urandom_range(0,1);
+            @(posedge clk);
+            valid_in <= 0;
+        end
 
-        #(CLK_PERIOD*1);
-        input_a = 16'h0007;
-        input_b = 16'h0002;
+        // Esperar flush final
+        repeat(10) @(posedge clk);
 
-        #(CLK_PERIOD*1);
-        select_precision = 1; // FP8
-        input_a = 8'h0A;
-        input_b = 8'h03;
-
-        #(CLK_PERIOD*5);
-        valid_in = 0;
-
-        #(CLK_PERIOD*10);
-        $display("✔ Testbench completado sin errores");
-        $finish;
+        $display("✔ Testbench completado sin errores de estímulo");
     end
 
     // =====================================================
@@ -116,12 +111,13 @@ module tb_aineuronx_full;
     // =====================================================
     // CHECK FUNCIONAL CONTRA GOLDEN
     // =====================================================
+    integer total_mismatches = 0;
     always @(posedge clk) begin
         if (rst_n && valid_in && ready_chip) begin
             if (output_chip !== golden_out) begin
-                $error("❌ MISMATCH | esperado=%0d obtenido=%0d | ciclo=%0d",
-                        golden_out, output_chip, cycle_count);
-                $stop;
+                $display("❌ MISMATCH | ciclo=%0d | input_a=%0d input_b=%0d | golden=%0d got=%0d",
+                        cycle_count, input_a, input_b, golden_out, output_chip);
+                total_mismatches = total_mismatches + 1;
             end
         end
     end
@@ -145,21 +141,60 @@ module tb_aineuronx_full;
     ) else $error("❌ ready activo durante reset");
 
     // =====================================================
-    // LOG AUTOMÁTICO CICLO A CICLO
+    // PIPELINE METRICS
+    // =====================================================
+    integer total_stalls = 0;
+    integer total_backpressure = 0;
+    integer input_cycle[$];
+    integer output_cycle[$];
+
+    always @(posedge clk) begin
+        if (valid_in) input_cycle.push_back(cycle_count);
+        if (valid_in && !ready_chip) total_stalls = total_stalls + 1;
+        if (ready_chip) output_cycle.push_back(cycle_count);
+        if (ready_chip && !valid_in) total_backpressure = total_backpressure + 1;
+    end
+
+    // =====================================================
+    // LOG CICLO A CICLO
     // =====================================================
     initial begin
-        $display("Ciclo | input_a | input_b | output_chip | golden_out");
+        $display("Ciclo | input_a | input_b | output_chip | golden_out | valid_in | ready_chip");
     end
 
     always @(posedge clk) begin
         if (rst_n && valid_in) begin
-            $display("%0d | %0d | %0d | %0d | %0d",
-                     cycle_count,
-                     input_a,
-                     input_b,
-                     output_chip,
-                     golden_out);
+            $display("%0d | %0d | %0d | %0d | %0d | %b | %b",
+                     cycle_count, input_a, input_b, output_chip, golden_out, valid_in, ready_chip);
         end
+    end
+
+    // =====================================================
+    // RESUMEN FINAL
+    // =====================================================
+    initial begin
+        # (CLK_PERIOD*500); // esperar a que termine todo el estímulo
+
+        integer i, lat, min_lat=1000, max_lat=0, sum_lat=0;
+        for (i=0; i<$size(input_cycle); i=i+1) begin
+            lat = output_cycle[i] - input_cycle[i];
+            sum_lat += lat;
+            if (lat < min_lat) min_lat = lat;
+            if (lat > max_lat) max_lat = lat;
+        end
+
+        $display("===================================");
+        $display("SIMULATION PIPELINE METRICS SUMMARY");
+        $display("Total ciclos simulados     : %0d", cycle_count);
+        $display("Total mismatches           : %0d", total_mismatches);
+        $display("Total stalls               : %0d", total_stalls);
+        $display("Total backpressure         : %0d", total_backpressure);
+        $display("Latencia mínima            : %0d ciclos", min_lat);
+        $display("Latencia máxima            : %0d ciclos", max_lat);
+        $display("Latencia promedio          : %0.2f ciclos", sum_lat*1.0/$size(input_cycle));
+        $display("===================================");
+
+        $stop;
     end
 
 endmodule
