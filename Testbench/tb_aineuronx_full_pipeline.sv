@@ -1,6 +1,7 @@
 // =====================================================
 // TB_AINEURONX_FULL_PIPELINE.SV
-// Testbench completo: Golden Model + Checks + Asserts + Pipeline Metrics
+// Testbench completo: Golden Model + Checks + Asserts
+// + Pipeline Metrics
 // Compatible con Verilator
 // =====================================================
 `timescale 1ns/1ps
@@ -10,9 +11,10 @@ module tb_aineuronx_full_pipeline;
     // -------------------------------------------------
     // Parámetros
     // -------------------------------------------------
-    parameter DATA_WIDTH_FP16 = 16;
-    parameter DATA_WIDTH_FP8  = 8;
-    parameter CLK_PERIOD = 10; // ns
+    parameter int DATA_WIDTH_FP16 = 16;
+    parameter int DATA_WIDTH_FP8  = 8;
+    parameter int CLK_PERIOD      = 10; // ns
+    localparam int EXPECTED_TX    = 20;
 
     // -------------------------------------------------
     // Señales
@@ -21,6 +23,7 @@ module tb_aineuronx_full_pipeline;
     reg rst_n;
     reg valid_in;
     reg select_precision; // 0 = FP16, 1 = FP8
+    reg prefetch_enable;
 
     reg  [DATA_WIDTH_FP16-1:0] input_a;
     reg  [DATA_WIDTH_FP16-1:0] input_b;
@@ -36,6 +39,7 @@ module tb_aineuronx_full_pipeline;
     aineuronx_chip uut (
         .clk(clk),
         .rst_n(rst_n),
+        .prefetch_enable(prefetch_enable),
         .valid_in(valid_in),
         .select_precision(select_precision),
         .input_a(input_a),
@@ -79,32 +83,32 @@ module tb_aineuronx_full_pipeline;
     // Reset + estímulos
     // -------------------------------------------------
     initial begin
-        rst_n = 0;
-        valid_in = 0;
-        select_precision = 0;
-        input_a = 0;
-        input_b = 0;
+        rst_n             = 0;
+        valid_in          = 0;
+        select_precision  = 0;
+        prefetch_enable   = 1'b1;
+        input_a           = '0;
+        input_b           = '0;
 
-        total_mismatches = 0;
-        total_stalls = 0;
-        total_backpressure = 0;
-        min_lat = 1000;
-        max_lat = 0;
-        sum_lat = 0;
+        total_mismatches  = 0;
+        total_stalls      = 0;
+        total_backpressure= 0;
+        min_lat           = 32'h7fffffff;
+        max_lat           = 0;
+        sum_lat           = 0;
 
         repeat (5) @(posedge clk);
         rst_n = 1;
 
-        // Estímulos
-        for (i = 0; i < 20; i = i + 1) begin
+        for (i = 0; i < EXPECTED_TX; i++) begin
             @(posedge clk);
-            valid_in <= 1;
-            input_a  <= $urandom_range(1,100);
-            input_b  <= $urandom_range(1,100);
+            valid_in         <= 1'b1;
+            input_a          <= $urandom_range(1,100);
+            input_b          <= $urandom_range(1,100);
             select_precision <= $urandom_range(0,1);
 
             @(posedge clk);
-            valid_in <= 0;
+            valid_in         <= 1'b0;
         end
     end
 
@@ -117,8 +121,9 @@ module tb_aineuronx_full_pipeline;
         if (select_precision == 1'b0)
             golden_out = input_a * input_b;
         else
-            golden_out = input_a[DATA_WIDTH_FP8-1:0] *
-                         input_b[DATA_WIDTH_FP8-1:0];
+            golden_out =
+                input_a[DATA_WIDTH_FP8-1:0] *
+                input_b[DATA_WIDTH_FP8-1:0];
     end
 
     // -------------------------------------------------
@@ -127,9 +132,12 @@ module tb_aineuronx_full_pipeline;
     always @(posedge clk) begin
         if (rst_n && valid_in && ready_chip) begin
             if (output_chip !== golden_out) begin
-                $display("❌ MISMATCH | ciclo=%0d | A=%0d B=%0d | golden=%0d got=%0d",
-                         cycle_count, input_a, input_b, golden_out, output_chip);
-                total_mismatches++;
+                $display(
+                    "❌ MISMATCH | ciclo=%0d | A=%0d B=%0d | golden=%0d got=%0d",
+                    cycle_count, input_a, input_b,
+                    golden_out, output_chip
+                );
+                total_mismatches <= total_mismatches + 1;
             end
         end
     end
@@ -157,38 +165,23 @@ module tb_aineuronx_full_pipeline;
             input_cycle.push_back(cycle_count);
 
         if (valid_in && !ready_chip)
-            total_stalls++;
+            total_stalls <= total_stalls + 1;
 
         if (ready_chip)
             output_cycle.push_back(cycle_count);
 
         if (ready_chip && !valid_in)
-            total_backpressure++;
+            total_backpressure <= total_backpressure + 1;
     end
 
     // -------------------------------------------------
-    // Log básico
+    // Resumen final (GARANTIZADO)
     // -------------------------------------------------
     initial begin
-        $display("Ciclo | A | B | Out | Golden | V | R");
-    end
+        wait (output_cycle.size() == EXPECTED_TX);
+        repeat (5) @(posedge clk);
 
-    always @(posedge clk) begin
-        if (rst_n && valid_in) begin
-            $display("%0d | %0d | %0d | %0d | %0d | %b | %b",
-                     cycle_count, input_a, input_b,
-                     output_chip, golden_out,
-                     valid_in, ready_chip);
-        end
-    end
-
-    // -------------------------------------------------
-    // Resumen final (termina la simulación)
-    // -------------------------------------------------
-    initial begin
-        repeat (200) @(posedge clk);
-
-        for (i = 0; i < input_cycle.size(); i = i + 1) begin
+        for (i = 0; i < EXPECTED_TX; i++) begin
             lat = output_cycle[i] - input_cycle[i];
             sum_lat += lat;
             if (lat < min_lat) min_lat = lat;
@@ -204,8 +197,9 @@ module tb_aineuronx_full_pipeline;
         $display("Latencia mínima            : %0d ciclos", min_lat);
         $display("Latencia máxima            : %0d ciclos", max_lat);
         $display("Latencia promedio          : %0.2f ciclos",
-                 sum_lat * 1.0 / input_cycle.size());
+                 sum_lat * 1.0 / EXPECTED_TX);
         $display("===================================");
+        $display("✔ Simulation finished successfully");
 
         $finish;
     end
