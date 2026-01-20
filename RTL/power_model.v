@@ -2,6 +2,7 @@
 // Power Model (RTL inicial)
 // Estimación básica de consumo de clusters y cores
 //===========================================================
+`timescale 1ns/1ps
 module power_model #(
     parameter N_CLUSTERS = 8
 )(
