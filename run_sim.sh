@@ -1,34 +1,26 @@
 #!/bin/bash
 # =====================================================
-# RUN_SIM.SH
-# Flujo completo AINeuronX: clean RTL + Verilator + TB
+# run_sim.sh
+# Compila RTL + Testbench y ejecuta la simulación
 # =====================================================
 
-# 1️⃣ Agregar timescale 1ns/1ps a todos los RTL si no existe
-echo "🔹 Revisando y agregando \`timescale a RTL..."
-for f in rtl/*.v; do
-    # Verifica si ya contiene timescale
-    if ! grep -q "`timescale" "$f"; then
-        sed -i '1i`timescale 1ns/1ps' "$f"
-        echo "  ✔ timescale agregado a $f"
-    fi
-done
-
-# 2️⃣ Limpiar compilaciones previas
-echo "🔹 Limpiando compilaciones previas..."
+# Limpieza opcional previa
 rm -rf obj_dir
 
-# 3️⃣ Compilar RTL + testbench con Verilator
-echo "🔹 Compilando con Verilator..."
+# -----------------------------------------------------
+# Paso 1: Generar C++ a partir de RTL + TB
+# -----------------------------------------------------
 verilator -Wall --cc rtl/*.v \
-    --exe tb/tb_aineuronx_full.sv \
-    --top-module aineuronx_chip \
-    --timing
+  --exe tb/tb_aineuronx_full_pipeline.sv \
+  --top-module aineuronx_chip \
+  --timing
 
+# -----------------------------------------------------
+# Paso 2: Compilar el ejecutable
+# -----------------------------------------------------
 make -C obj_dir -f Vaineuronx_chip.mk
 
-# 4️⃣ Ejecutar la simulación
-echo "🔹 Ejecutando simulación..."
+# -----------------------------------------------------
+# Paso 3: Ejecutar la simulación
+# -----------------------------------------------------
 ./obj_dir/Vaineuronx_chip
-
-echo "✅ Flujo completo terminado."
