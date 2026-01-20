@@ -22,6 +22,7 @@ module tb_aineuronx_full_pipeline;
     reg rst_n;
     reg valid_in;
     reg select_precision; // 0 = FP16, 1 = FP8
+    reg prefetch_enable;
 
     reg  [DATA_WIDTH_FP16-1:0] input_a;
     reg  [DATA_WIDTH_FP16-1:0] input_b;
@@ -37,6 +38,7 @@ module tb_aineuronx_full_pipeline;
     aineuronx_chip uut (
         .clk(clk),
         .rst_n(rst_n),
+        .prefetch_enable(prefetch_enable),
         .valid_in(valid_in),
         .select_precision(select_precision),
         .input_a(input_a),
@@ -64,7 +66,10 @@ module tb_aineuronx_full_pipeline;
     // Clock
     // -------------------------------------------------
     initial clk = 0;
-    always #(CLK_PERIOD/2) clk = ~clk;
+    always begin
+        #(CLK_PERIOD/2);
+        clk = ~clk;
+    end
 
     // -------------------------------------------------
     // Contador de ciclos
@@ -83,6 +88,7 @@ module tb_aineuronx_full_pipeline;
         rst_n = 0;
         valid_in = 0;
         select_precision = 0;
+        prefetch_enable = 1'b1;
         input_a = 0;
         input_b = 0;
 
@@ -98,13 +104,13 @@ module tb_aineuronx_full_pipeline;
 
         for (i = 0; i < EXPECTED_TX; i = i + 1) begin
             @(posedge clk);
-            valid_in <= 1;
-            input_a  <= $urandom_range(1,100);
-            input_b  <= $urandom_range(1,100);
-            select_precision <= $urandom_range(0,1);
+            valid_in = 1;
+            input_a  = $urandom_range(1,100)[15:0];
+            input_b  = $urandom_range(1,100)[15:0];
+            select_precision = $urandom_range(0,1)[0];
 
             @(posedge clk);
-            valid_in <= 0;
+            valid_in = 0;
         end
     end
 
@@ -129,7 +135,7 @@ module tb_aineuronx_full_pipeline;
             if (output_chip !== golden_out) begin
                 $display("❌ MISMATCH | ciclo=%0d | A=%0d B=%0d | golden=%0d got=%0d",
                          cycle_count, input_a, input_b, golden_out, output_chip);
-                total_mismatches++;
+                total_mismatches <= total_mismatches + 1;
             end
         end
     end
@@ -157,33 +163,17 @@ module tb_aineuronx_full_pipeline;
             input_cycle.push_back(cycle_count);
 
         if (valid_in && !ready_chip)
-            total_stalls++;
+            total_stalls <= total_stalls + 1;
 
         if (ready_chip)
             output_cycle.push_back(cycle_count);
 
         if (ready_chip && !valid_in)
-            total_backpressure++;
+            total_backpressure <= total_backpressure + 1;
     end
 
     // -------------------------------------------------
-    // Log básico
-    // -------------------------------------------------
-    initial begin
-        $display("Ciclo | A | B | Out | Golden | V | R");
-    end
-
-    always @(posedge clk) begin
-        if (rst_n && valid_in) begin
-            $display("%0d | %0d | %0d | %0d | %0d | %b | %b",
-                     cycle_count, input_a, input_b,
-                     output_chip, golden_out,
-                     valid_in, ready_chip);
-        end
-    end
-
-    // -------------------------------------------------
-    // Resumen final (CORRECTO)
+    // Resumen final (GARANTIZADO)
     // -------------------------------------------------
     initial begin
         wait (output_cycle.size() == EXPECTED_TX);
