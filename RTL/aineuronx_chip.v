@@ -1,6 +1,7 @@
 //===========================================================
 // AINeuronX Top-Level RTL (Chip completo)
 //===========================================================
+`timescale 1ns/1ps
 module aineuronx_chip #(
     parameter NUM_CLUSTERS = 8,
     parameter SUB_ARRAYS = 8,
