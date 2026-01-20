@@ -4,18 +4,16 @@
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
 
-    // Instancia del testbench (NO del chip)
-    Vtb_aineuronx_full_pipeline* tb =
+    Vtb_aineuronx_full_pipeline* top =
         new Vtb_aineuronx_full_pipeline;
 
-    // El clock, reset y $finish los controla el TB en SV
+    // El testbench controla clock, reset y finalización
     while (!Verilated::gotFinish()) {
-        tb->eval();
+        top->eval();
     }
 
-    // Mensaje final único y correcto
     printf("✔ Simulation finished successfully\n");
 
-    delete tb;
+    delete top;
     return 0;
 }
