@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     top->rst_n = 0;
 
     // Simulación acotada (seguridad)
-    const vluint64_t MAX_TIME = 20000;
+    const vluint64_t MAX_TIME = 20000000;
 
     while (!Verilated::gotFinish() && main_time < MAX_TIME) {
 
