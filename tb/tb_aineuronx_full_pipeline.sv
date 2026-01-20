@@ -1,7 +1,6 @@
 // =====================================================
 // TB_AINEURONX_FULL_PIPELINE.SV
-// Testbench completo: Golden Model + Checks + Asserts
-// + Pipeline Metrics
+// Testbench completo: Golden Model + Checks + Asserts + Pipeline Metrics
 // Compatible con Verilator
 // =====================================================
 `timescale 1ns/1ps
@@ -25,8 +24,8 @@ module tb_aineuronx_full_pipeline;
     reg select_precision; // 0 = FP16, 1 = FP8
     reg prefetch_enable;
 
-    reg [DATA_WIDTH_FP16-1:0] input_a;
-    reg [DATA_WIDTH_FP16-1:0] input_b;
+    reg  [DATA_WIDTH_FP16-1:0] input_a;
+    reg  [DATA_WIDTH_FP16-1:0] input_b;
 
     wire [DATA_WIDTH_FP16-1:0] output_chip;
     wire ready_chip;
@@ -67,18 +66,16 @@ module tb_aineuronx_full_pipeline;
     // Clock
     // -------------------------------------------------
     initial clk = 0;
-    always begin
-        #(CLK_PERIOD/2) clk = ~clk;
-    end
+    always #(CLK_PERIOD/2) clk = ~clk;
 
     // -------------------------------------------------
     // Contador de ciclos
     // -------------------------------------------------
     always @(posedge clk) begin
         if (!rst_n)
-            cycle_count = 0;
+            cycle_count <= 0;
         else
-            cycle_count = cycle_count + 1;
+            cycle_count <= cycle_count + 1;
     end
 
     // -------------------------------------------------
@@ -89,28 +86,30 @@ module tb_aineuronx_full_pipeline;
         valid_in         = 0;
         select_precision = 0;
         prefetch_enable  = 1'b1;
-        input_a          = '0;
-        input_b          = '0;
+        input_a          = {DATA_WIDTH_FP16{1'b0}};
+        input_b          = {DATA_WIDTH_FP16{1'b0}};
 
-        total_mismatches  = 0;
-        total_stalls      = 0;
-        total_backpressure= 0;
-        min_lat           = 32'h7fffffff;
-        max_lat           = 0;
-        sum_lat           = 0;
+        total_mismatches   = 0;
+        total_stalls       = 0;
+        total_backpressure = 0;
+        min_lat            = 32'h7fffffff;
+        max_lat            = 0;
+        sum_lat            = 0;
 
         repeat (5) @(posedge clk);
         rst_n = 1;
 
         for (i = 0; i < EXPECTED_TX; i = i + 1) begin
             @(posedge clk);
-            valid_in         = 1'b1;
+            valid_in = 1'b1;
+
+            // Asignaciones seguras, sin WIDTHTRUNC
             input_a          = DATA_WIDTH_FP16'($urandom_range(1,100));
             input_b          = DATA_WIDTH_FP16'($urandom_range(1,100));
             select_precision = 1'($urandom_range(0,1));
 
             @(posedge clk);
-            valid_in         = 1'b0;
+            valid_in = 1'b0;
         end
     end
 
@@ -135,8 +134,7 @@ module tb_aineuronx_full_pipeline;
             if (output_chip !== golden_out) begin
                 $display(
                     "❌ MISMATCH | ciclo=%0d | A=%0d B=%0d | golden=%0d got=%0d",
-                    cycle_count, input_a, input_b,
-                    golden_out, output_chip
+                    cycle_count, input_a, input_b, golden_out, output_chip
                 );
                 total_mismatches = total_mismatches + 1;
             end
@@ -176,7 +174,7 @@ module tb_aineuronx_full_pipeline;
     end
 
     // -------------------------------------------------
-    // Resumen final (GARANTIZADO)
+    // Resumen final
     // -------------------------------------------------
     initial begin
         wait (output_cycle.size() == EXPECTED_TX);
