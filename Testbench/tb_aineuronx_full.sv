@@ -1,6 +1,6 @@
 // =====================================================
 // TB_AINEURONX_FULL.SV
-// Testbench completo: Golden Model + Checks + Asserts
+// Testbench completo: Golden Model + Checks + Asserts + Logging
 // =====================================================
 `timescale 1ns/1ps
 
@@ -144,4 +144,23 @@ module tb_aineuronx_full;
         !rst_n |-> !ready_chip
     ) else $error("❌ ready activo durante reset");
 
+    // =====================================================
+    // LOG AUTOMÁTICO CICLO A CICLO
+    // =====================================================
+    initial begin
+        $display("Ciclo | input_a | input_b | output_chip | golden_out");
+    end
+
+    always @(posedge clk) begin
+        if (rst_n && valid_in) begin
+            $display("%0d | %0d | %0d | %0d | %0d",
+                     cycle_count,
+                     input_a,
+                     input_b,
+                     output_chip,
+                     golden_out);
+        end
+    end
+
 endmodule
+
