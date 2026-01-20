@@ -2,6 +2,7 @@
 // DMA Engine (RTL inicial)
 // Transferencias L2 ↔ Cluster
 //===========================================================
+`timescale 1ns/1ps
 module dma_engine #(
     parameter DATA_WIDTH = 16,
     parameter BLOCK_SIZE = 64
