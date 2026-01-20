@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-# =====================================================
-# run_sim.sh
-# Compila RTL + Testbench y ejecuta la simulación
-# =====================================================
-
 echo "▶ Cleaning previous build..."
 rm -rf obj_dir
 
