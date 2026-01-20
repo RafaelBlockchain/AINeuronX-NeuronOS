@@ -13,6 +13,7 @@ module tb_aineuronx_full_pipeline;
     parameter DATA_WIDTH_FP16 = 16;
     parameter DATA_WIDTH_FP8  = 8;
     parameter CLK_PERIOD = 10; // ns
+    localparam int EXPECTED_TX = 20;
 
     // -------------------------------------------------
     // Señales
@@ -95,8 +96,7 @@ module tb_aineuronx_full_pipeline;
         repeat (5) @(posedge clk);
         rst_n = 1;
 
-        // Estímulos
-        for (i = 0; i < 20; i = i + 1) begin
+        for (i = 0; i < EXPECTED_TX; i = i + 1) begin
             @(posedge clk);
             valid_in <= 1;
             input_a  <= $urandom_range(1,100);
@@ -183,12 +183,13 @@ module tb_aineuronx_full_pipeline;
     end
 
     // -------------------------------------------------
-    // Resumen final (termina la simulación)
+    // Resumen final (CORRECTO)
     // -------------------------------------------------
     initial begin
-        repeat (200) @(posedge clk);
+        wait (output_cycle.size() == EXPECTED_TX);
+        repeat (5) @(posedge clk);
 
-        for (i = 0; i < input_cycle.size(); i = i + 1) begin
+        for (i = 0; i < EXPECTED_TX; i = i + 1) begin
             lat = output_cycle[i] - input_cycle[i];
             sum_lat += lat;
             if (lat < min_lat) min_lat = lat;
@@ -204,11 +205,10 @@ module tb_aineuronx_full_pipeline;
         $display("Latencia mínima            : %0d ciclos", min_lat);
         $display("Latencia máxima            : %0d ciclos", max_lat);
         $display("Latencia promedio          : %0.2f ciclos",
-                 sum_lat * 1.0 / input_cycle.size());
+                 sum_lat * 1.0 / EXPECTED_TX);
         $display("===================================");
 
         $finish;
     end
 
 endmodule
-
