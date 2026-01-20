@@ -2,6 +2,7 @@
 // AINeuronX L2 Cache (RTL inicial)
 // Soporta prefetch básico y multi-entrada por cluster
 //===========================================================
+`timescale 1ns/1ps
 module l2_cache #(
     parameter CACHE_SIZE = 8192,      // palabras
     parameter DATA_WIDTH = 16
