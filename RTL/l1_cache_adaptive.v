@@ -2,6 +2,7 @@
 // AINeuronX L1 Cache Adaptativa
 // ASIC-grade, Verilator clean
 //===========================================================
+`timescale 1ns/1ps
 module l1_cache_adaptive #(
     parameter CACHE_SIZE = 1024,
     parameter DATA_WIDTH = 16
