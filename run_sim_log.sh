@@ -23,9 +23,9 @@ rm -f "$LOGFILE"
 # 3️⃣ Compilar RTL + testbench con Verilator
 echo "🔹 Compilando con Verilator..."
 verilator -Wall --cc rtl/*.v \
-    --exe tb/tb_aineuronx_full.sv \
-    --top-module aineuronx_chip \
-    --timing
+  --exe tb/tb_aineuronx_full_pipeline.sv \
+  --top-module aineuronx_chip \
+  --timing
 
 make -C obj_dir -f Vaineuronx_chip.mk
 
