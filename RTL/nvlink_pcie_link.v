@@ -1,6 +1,7 @@
 //===========================================================
 // NVLink / PCIe Link (simulación)
 //===========================================================
+`timescale 1ns/1ps
 module nvlink_pcie_link #(
     parameter DATA_WIDTH = 16
 )(
