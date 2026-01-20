@@ -2,6 +2,7 @@
 // AINeuronX Memory Controller (RTL inicial)
 // Gestiona requests a L2 y DRAM externa
 //===========================================================
+`timescale 1ns/1ps
 module memory_controller #(
     parameter DATA_WIDTH = 16,
     parameter ADDR_WIDTH = 32
