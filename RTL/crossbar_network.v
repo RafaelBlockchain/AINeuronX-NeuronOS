@@ -2,6 +2,7 @@
 // Crossbar Network (RTL inicial)
 // Multiplexa múltiples entradas y salidas entre clusters
 //===========================================================
+`timescale 1ns/1ps
 module crossbar_network #(
     parameter N_IN = 8,
     parameter N_OUT = 8,
