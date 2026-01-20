@@ -2,6 +2,7 @@
 // AINeuronX Tensor Core Array (RTL)
 // 512 Tensor Cores divididos en sub-arrays
 //===========================================================
+`timescale 1ns/1ps
 module tensor_core_array #(
     parameter SUB_ARRAYS = 8,
     parameter CORES_PER_SUBARRAY = 64,
