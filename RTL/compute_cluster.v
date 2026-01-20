@@ -1,6 +1,7 @@
 //===========================================================
 // AINeuronX Compute Cluster (RTL integrado)
 //===========================================================
+`timescale 1ns/1ps
 module compute_cluster #(
     parameter SUB_ARRAYS = 8,
     parameter CORES_PER_SUBARRAY = 64,
