@@ -19,8 +19,8 @@ module aineuronx;
     logic clk;
     logic rst_n;
     logic valid_in;
-    logic select_precision;   // ahora usada
-    logic prefetch_enable;    // ahora usada
+    logic select_precision;
+    logic prefetch_enable;
 
     logic [DATA_WIDTH_FP16-1:0] input_a;
     logic [DATA_WIDTH_FP16-1:0] input_b;
@@ -52,7 +52,7 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // DUT STUB (usa TODAS las señales)
+    // DUT STUB (usa todas las señales)
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -61,19 +61,17 @@ module aineuronx;
         end else if (valid_in && prefetch_enable) begin
             ready_chip <= 1'b1;
 
-            // select_precision afecta el cálculo (dummy)
             if (select_precision)
                 output_chip <= input_a + input_b;
             else
                 output_chip <= input_a - input_b;
-
         end else begin
             ready_chip <= 1'b0;
         end
     end
 
     // -------------------------------------------------
-    // Reset + estímulos
+    // Reset + estímulos + FINALIZACIÓN CORRECTA
     // -------------------------------------------------
     initial begin
         rst_n            = 0;
@@ -87,13 +85,12 @@ module aineuronx;
         rst_n = 1;
 
         repeat (2) @(posedge clk);
-
         prefetch_enable = 1'b1;
 
         for (int i = 0; i < EXPECTED_TX; i++) begin
             @(posedge clk);
             valid_in         = 1'b1;
-            select_precision = i[0]; // alterna uso
+            select_precision = i[0];
 
             input_a = DATA_WIDTH_FP16'(i);
             input_b = DATA_WIDTH_FP16'(EXPECTED_TX - i);
@@ -103,36 +100,42 @@ module aineuronx;
 
         @(posedge clk);
         valid_in = 1'b0;
+
+        // Esperar a que todas las salidas lleguen
+        wait (output_cycle.size() == input_cycle.size());
+
+        // Ciclos de gracia
+        repeat (2) @(posedge clk);
+
+        $finish; 
     end
 
     // -------------------------------------------------
-    // Captura y consumo de salida (ELIMINA warning)
+    // Captura y consumo de salida
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (ready_chip) begin
             output_cycle.push_back(cycle_count);
 
-            // Consumo explícito del dato
             assert (output_chip !== 'x)
                 else $error("Output indefinido");
         end
     end
 
     // -------------------------------------------------
-    // Reporte final
+    // Reporte final (post-mortem)
     // -------------------------------------------------
-final begin
-    $display("====================================");
-    $display(" AINEURONX TB FINAL REPORT");
-    $display(" Inputs enviados  : %0d", input_cycle.size());
-    $display(" Outputs recibidos: %0d", output_cycle.size());
+    final begin
+        $display("====================================");
+        $display(" AINEURONX TB FINAL REPORT");
+        $display(" Inputs enviados  : %0d", input_cycle.size());
+        $display(" Outputs recibidos: %0d", output_cycle.size());
 
-    if (input_cycle.size() != output_cycle.size())
-        $error("Mismatch TX/RX");
+        if (input_cycle.size() != output_cycle.size())
+            $error("Mismatch TX/RX");
 
-    $display(" Testbench finalizado correctamente");
-    $display("====================================");  
-end
-
+        $display(" Testbench finalizado correctamente");
+        $display("====================================");
+    end
 
 endmodule
