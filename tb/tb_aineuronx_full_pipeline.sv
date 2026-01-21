@@ -25,8 +25,8 @@ module tb_aineuronx_full_pipeline;
     reg select_precision; // 0 = FP16, 1 = FP8
     reg prefetch_enable;
 
-    reg [DATA_WIDTH_FP16-1:0] input_a;
-    reg [DATA_WIDTH_FP16-1:0] input_b;
+    reg  [DATA_WIDTH_FP16-1:0] input_a;
+    reg  [DATA_WIDTH_FP16-1:0] input_b;
 
     wire [DATA_WIDTH_FP16-1:0] output_chip;
     wire ready_chip;
@@ -67,30 +67,28 @@ module tb_aineuronx_full_pipeline;
     // Clock
     // -------------------------------------------------
     initial clk = 0;
-    always begin
-        #(CLK_PERIOD/2) clk = ~clk;
-    end
+    always #(CLK_PERIOD/2) clk = ~clk;
 
     // -------------------------------------------------
     // Contador de ciclos
     // -------------------------------------------------
     always @(posedge clk) begin
         if (!rst_n)
-            cycle_count = 0;
+            cycle_count <= 0;
         else
-            cycle_count = cycle_count + 1;
+            cycle_count <= cycle_count + 1;
     end
 
     // -------------------------------------------------
     // Reset + estímulos
     // -------------------------------------------------
     initial begin
-        rst_n            = 0;
-        valid_in         = 0;
-        select_precision = 0;
-        prefetch_enable  = 1'b1;
-        input_a          = '0;
-        input_b          = '0;
+        rst_n             = 0;
+        valid_in          = 0;
+        select_precision  = 0;
+        prefetch_enable   = 1'b1;
+        input_a           = '0;
+        input_b           = '0;
 
         total_mismatches  = 0;
         total_stalls      = 0;
@@ -123,8 +121,9 @@ module tb_aineuronx_full_pipeline;
         if (select_precision == 1'b0)
             golden_out = input_a * input_b;
         else
-            golden_out = input_a[DATA_WIDTH_FP8-1:0] *
-                         input_b[DATA_WIDTH_FP8-1:0];
+            golden_out =
+                input_a[DATA_WIDTH_FP8-1:0] *
+                input_b[DATA_WIDTH_FP8-1:0];
     end
 
     // -------------------------------------------------
@@ -138,7 +137,7 @@ module tb_aineuronx_full_pipeline;
                     cycle_count, input_a, input_b,
                     golden_out, output_chip
                 );
-                total_mismatches = total_mismatches + 1;
+                total_mismatches <= total_mismatches + 1;
             end
         end
     end
@@ -166,17 +165,17 @@ module tb_aineuronx_full_pipeline;
             input_cycle.push_back(cycle_count);
 
         if (valid_in && !ready_chip)
-            total_stalls = total_stalls + 1;
+            total_stalls <= total_stalls + 1;
 
         if (ready_chip)
             output_cycle.push_back(cycle_count);
 
         if (ready_chip && !valid_in)
-            total_backpressure = total_backpressure + 1;
+            total_backpressure <= total_backpressure + 1;
     end
 
     // -------------------------------------------------
-    // Resumen final (GARANTIZADO)
+    // Resumen final
     // -------------------------------------------------
     initial begin
         wait (output_cycle.size() == EXPECTED_TX);
@@ -184,7 +183,7 @@ module tb_aineuronx_full_pipeline;
 
         for (i = 0; i < EXPECTED_TX; i = i + 1) begin
             lat = output_cycle[i] - input_cycle[i];
-            sum_lat = sum_lat + lat;
+            sum_lat += lat;
             if (lat < min_lat) min_lat = lat;
             if (lat > max_lat) max_lat = lat;
         end
