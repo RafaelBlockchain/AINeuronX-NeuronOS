@@ -33,10 +33,13 @@ module aineuronx;
     integer output_cycle [$];
 
     // -------------------------------------------------
-    // Clock
+    // Clock (Verilator-safe)
     // -------------------------------------------------
     initial clk = 0;
-    always #(CLK_PERIOD/2) clk = ~clk;
+    always begin
+    #(CLK_PERIOD/2);
+    clk <= ~clk;
+    end
 
     // -------------------------------------------------
     // Contador de ciclos
