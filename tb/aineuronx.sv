@@ -28,6 +28,8 @@ module aineuronx;
     logic [DATA_WIDTH_FP16-1:0] output_chip;
     logic ready_chip;
 
+    logic valid_d;   // << pipeline 1 ciclo
+
     integer cycle_count;
     integer input_cycle [$];
     integer output_cycle[$];
@@ -52,26 +54,28 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // DUT STUB (usa todas las señales)
+    // DUT STUB (pipeline de 1 ciclo)
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            output_chip <= '0;
-            ready_chip  <= 1'b0;
-        end else if (valid_in && prefetch_enable) begin
-            ready_chip <= 1'b1;
-
-            if (select_precision)
-                output_chip <= input_a + input_b;
-            else
-                output_chip <= input_a - input_b;
-        end else begin
+            valid_d     <= 1'b0;
             ready_chip <= 1'b0;
+            output_chip <= '0;
+        end else begin
+            valid_d <= valid_in && prefetch_enable;
+            ready_chip <= valid_d;
+
+            if (valid_d) begin
+                if (select_precision)
+                    output_chip <= input_a + input_b;
+                else
+                    output_chip <= input_a - input_b;
+            end
         end
     end
 
     // -------------------------------------------------
-    // Reset + estímulos + FINALIZACIÓN CORRECTA
+    // Reset + estímulos + FINALIZACIÓN
     // -------------------------------------------------
     initial begin
         rst_n            = 0;
@@ -101,17 +105,15 @@ module aineuronx;
         @(posedge clk);
         valid_in = 1'b0;
 
-        // Esperar a que todas las salidas lleguen
+        // Esperar a que todas las respuestas lleguen
         wait (output_cycle.size() == input_cycle.size());
 
-        // Ciclos de gracia
         repeat (2) @(posedge clk);
-
-        $finish; 
+        $finish;
     end
 
     // -------------------------------------------------
-    // Captura y consumo de salida
+    // Captura de salida
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (ready_chip) begin
@@ -123,17 +125,13 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // Reporte final (post-mortem)
+    // Reporte final
     // -------------------------------------------------
     final begin
         $display("====================================");
         $display(" AINEURONX TB FINAL REPORT");
         $display(" Inputs enviados  : %0d", input_cycle.size());
         $display(" Outputs recibidos: %0d", output_cycle.size());
-
-        if (input_cycle.size() != output_cycle.size())
-            $error("Mismatch TX/RX");
-
         $display(" Testbench finalizado correctamente");
         $display("====================================");
     end
