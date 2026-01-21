@@ -1,85 +1,44 @@
 // =====================================================
 // AINEURONX_CORE.SV
-// Core de cómputo pipelineado (latencia fija = 3 ciclos)
+// Core mínimo funcional – pipeline 1 ciclo
 // =====================================================
 `timescale 1ns/1ps
 
-module aineuronx_core (
-    input  logic        clk,
-    input  logic        rst_n,
+module aineuronx_core #(
+    parameter int DATA_WIDTH = 16
+)(
+    input  logic                    clk,
+    input  logic                    rst_n,
 
-    input  logic        valid_in,
-    input  logic        prefetch_enable,
-    input  logic        select_precision,
+    input  logic                    valid_in,
+    input  logic                    select_precision,
+    input  logic                    prefetch_enable,
 
-    input  logic [15:0] input_a,
-    input  logic [15:0] input_b,
+    input  logic [DATA_WIDTH-1:0]   input_a,
+    input  logic [DATA_WIDTH-1:0]   input_b,
 
-    output logic        ready_out,
-    output logic [15:0] output_data
+    output logic                    ready_out,
+    output logic [DATA_WIDTH-1:0]   output_data
 );
 
-    // -------------------------------
-    // Pipeline registers
-    // -------------------------------
-    logic        vld_s0, vld_s1, vld_s2;
-    logic        prec_s0, prec_s1;
-    logic [15:0] a_s0, b_s0;
-    logic [15:0] alu_s1;
-    logic [15:0] out_s2;
+    logic valid_d;
 
-    // -------------------------------
-    // Stage 0 — Input latch
-    // -------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            vld_s0 <= 1'b0;
+            valid_d     <= 1'b0;
+            ready_out   <= 1'b0;
+            output_data <= '0;
         end else begin
-            vld_s0 <= valid_in && prefetch_enable;
-            if (valid_in && prefetch_enable) begin
-                a_s0    <= input_a;
-                b_s0    <= input_b;
-                prec_s0 <= select_precision;
-            end
-        end
-    end
+            valid_d   <= valid_in && prefetch_enable;
+            ready_out <= valid_d;
 
-    // -------------------------------
-    // Stage 1 — Execute
-    // -------------------------------
-    always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            vld_s1 <= 1'b0;
-        end else begin
-            vld_s1 <= vld_s0;
-            prec_s1 <= prec_s0;
-
-            if (vld_s0) begin
-                if (prec_s0)
-                    alu_s1 <= a_s0 + b_s0;
+            if (valid_d) begin
+                if (select_precision)
+                    output_data <= input_a + input_b;
                 else
-                    alu_s1 <= a_s0 - b_s0;
+                    output_data <= input_a - input_b;
             end
         end
     end
-
-    // -------------------------------
-    // Stage 2 — Writeback
-    // -------------------------------
-    always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            vld_s2 <= 1'b0;
-        end else begin
-            vld_s2 <= vld_s1;
-            if (vld_s1)
-                out_s2 <= alu_s1;
-        end
-    end
-
-    // -------------------------------
-    // Outputs
-    // -------------------------------
-    assign ready_out  = vld_s2;
-    assign output_data = out_s2;
 
 endmodule
