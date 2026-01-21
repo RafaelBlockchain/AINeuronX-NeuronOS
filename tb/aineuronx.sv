@@ -131,9 +131,7 @@ final begin
         $error("Mismatch TX/RX");
 
     $display(" Testbench finalizado correctamente");
-    $display("====================================");
-
-    $finish;   
+    $display("====================================");  
 end
 
 
