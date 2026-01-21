@@ -1,6 +1,6 @@
 // =====================================================
 // AINEURONX.SV
-// Testbench limpio, sin warnings, Verilator-friendly
+// Testbench real conectado a aineuronx_core
 // =====================================================
 `timescale 1ns/1ps
 
@@ -28,20 +28,15 @@ module aineuronx;
     logic [DATA_WIDTH_FP16-1:0] output_chip;
     logic ready_chip;
 
-    logic valid_d;   // << pipeline 1 ciclo
-
     integer cycle_count;
-    integer input_cycle [$];
-    integer output_cycle[$];
+    integer input_cycle  [$];
+    integer output_cycle [$];
 
     // -------------------------------------------------
     // Clock
     // -------------------------------------------------
     initial clk = 0;
-    always begin
-        #(CLK_PERIOD/2);
-        clk <= ~clk;
-    end
+    always #(CLK_PERIOD/2) clk = ~clk;
 
     // -------------------------------------------------
     // Contador de ciclos
@@ -54,28 +49,24 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // DUT STUB (pipeline de 1 ciclo)
+    // DUT REAL
     // -------------------------------------------------
-    always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            valid_d     <= 1'b0;
-            ready_chip <= 1'b0;
-            output_chip <= '0;
-        end else begin
-            valid_d <= valid_in && prefetch_enable;
-            ready_chip <= valid_d;
-
-            if (valid_d) begin
-                if (select_precision)
-                    output_chip <= input_a + input_b;
-                else
-                    output_chip <= input_a - input_b;
-            end
-        end
-    end
+    aineuronx_core #(
+        .DATA_WIDTH(DATA_WIDTH_FP16)
+    ) dut (
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .valid_in         (valid_in),
+        .select_precision (select_precision),
+        .prefetch_enable  (prefetch_enable),
+        .input_a          (input_a),
+        .input_b          (input_b),
+        .ready_out        (ready_chip),
+        .output_data      (output_chip)
+    );
 
     // -------------------------------------------------
-    // Reset + estímulos + FINALIZACIÓN
+    // Reset + estímulos
     // -------------------------------------------------
     initial begin
         rst_n            = 0;
@@ -105,7 +96,7 @@ module aineuronx;
         @(posedge clk);
         valid_in = 1'b0;
 
-        // Esperar a que todas las respuestas lleguen
+        // Esperar todas las respuestas del core real
         wait (output_cycle.size() == input_cycle.size());
 
         repeat (2) @(posedge clk);
@@ -120,7 +111,7 @@ module aineuronx;
             output_cycle.push_back(cycle_count);
 
             assert (output_chip !== 'x)
-                else $error("Output indefinido");
+                else $fatal("❌ Output indefinido detectado");
         end
     end
 
@@ -132,7 +123,7 @@ module aineuronx;
         $display(" AINEURONX TB FINAL REPORT");
         $display(" Inputs enviados  : %0d", input_cycle.size());
         $display(" Outputs recibidos: %0d", output_cycle.size());
-        $display(" Testbench finalizado correctamente");
+        $display(" Testbench OK – Core real conectado");
         $display("====================================");
     end
 
