@@ -121,17 +121,20 @@ module aineuronx;
     // -------------------------------------------------
     // Reporte final
     // -------------------------------------------------
-    final begin
-        $display("====================================");
-        $display(" AINEURONX TB FINAL REPORT");
-        $display(" Inputs enviados  : %0d", input_cycle.size());
-        $display(" Outputs recibidos: %0d", output_cycle.size());
+final begin
+    $display("====================================");
+    $display(" AINEURONX TB FINAL REPORT");
+    $display(" Inputs enviados  : %0d", input_cycle.size());
+    $display(" Outputs recibidos: %0d", output_cycle.size());
 
-        if (input_cycle.size() != output_cycle.size())
-            $error("Mismatch TX/RX");
+    if (input_cycle.size() != output_cycle.size())
+        $error("Mismatch TX/RX");
 
-        $display(" Testbench finalizado correctamente");
-        $display("====================================");
-    end
+    $display(" Testbench finalizado correctamente");
+    $display("====================================");
+
+    $finish;   
+end
+
 
 endmodule
