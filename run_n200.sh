@@ -1,29 +1,26 @@
 #!/bin/bash
 # ==================================================
-# Script de compilación y simulación Verilator
-# para AINeuronX_N200 core vectorizado + TB industrial
+# Build & simulate AINeuronX_N200 with Verilator
 # ==================================================
 
-# Limpiar compilaciones anteriores
+set -e
+
 echo "▸ Cleaning previous build..."
 rm -rf obj_dir
 
-# Verilating RTL + TB
 echo "► Verilating RTL + TB..."
-verilator -Wall --cc --exe --build -I./src \
+verilator -Wall --cc --exe --build \
     src/AINeuronX_N200_CORE.SV \
     src/AINeuronX_N200_TB.SV \
     --trace
 
-# Verilated binary
-SIM_BINARY=./obj_dir/VAINeuronX_N200_TB
+SIM=./obj_dir/VAINeuronX_N200_TB
 
-# Ejecutar simulación
-if [ -f "$SIM_BINARY" ]; then
+if [ -f "$SIM" ]; then
     echo "► Running simulation..."
-    $SIM_BINARY
+    $SIM
     echo "✔ Simulation finished"
-    echo "✔ Waveform generated: obj_dir/waves.fst"
+    echo "✔ Waveform: obj_dir/waves.fst"
 else
     echo "❌ Simulation binary not found"
 fi
