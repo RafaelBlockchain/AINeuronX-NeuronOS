@@ -45,50 +45,25 @@ module AINeuronX_N200_CORE #(
     // =================================================
     // PIPELINE
     // =================================================
-    always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            valid_s0   <= 1'b0;
-            valid_s1   <= 1'b0;
-            valid_s2   <= 1'b0;
-            ready_out  <= 1'b0;
-            output_data <= '0;
-        end
-        else begin
-            // -------------------------
-            // STAGE 0 — Input capture
-            // -------------------------
-            valid_s0 <= valid_in && prefetch_enable;
+always_ff @(posedge clk) begin
+    if (ready_out) begin
+        for (int l=0; l<VECTOR_LANES; l++) begin
+            golden_t g = golden_queue.pop_front();
+            logic [DATA_WIDTH-1:0] out_val;
+            int latency;
 
-            for (int l = 0; l < VECTOR_LANES; l++) begin
-                a_s0[l] <= input_a[l*DATA_WIDTH +: DATA_WIDTH];
-                b_s0[l] <= input_b[l*DATA_WIDTH +: DATA_WIDTH];
-            end
+            out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
+            latency = cycle_count - g.cycle_in;
 
-            // -------------------------
-            // STAGE 1 — Execute
-            // -------------------------
-            valid_s1 <= valid_s0;
+            assert (out_val == g.a + g.b)
+                else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected a+b | Latency=%0d | Lane=%0d | Cycle=%0d",
+                            out_val, latency, l, cycle_count);
 
-            for (int l = 0; l < VECTOR_LANES; l++) begin
-                sum_s1[l] <= a_s0[l] + b_s0[l];
-            end
-
-            // -------------------------
-            // STAGE 2 — Commit
-            // -------------------------
-            valid_s2  <= valid_s1;
-            ready_out <= valid_s2;
-
-            if (valid_s1) begin
-                for (int l = 0; l < VECTOR_LANES; l++) begin
-                    out_s2[l] <= sum_s1[l];
-                end
-            end
-
-            for (int l = 0; l < VECTOR_LANES; l++) begin
-                output_data[l*DATA_WIDTH +: DATA_WIDTH] <= out_s2[l];
-            end
+            assert (latency == 3)
+                else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d | Cycle=%0d",
+                            latency, l, cycle_count);
         end
     end
+end
 
 endmodule
