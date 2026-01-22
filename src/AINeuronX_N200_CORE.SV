@@ -2,7 +2,6 @@
 // AINeuronX_N200_CORE.SV
 // Core vectorizado – Pipeline formal de 3 etapas
 // Latencia fija: 3 ciclos
-// Listo para golden model + tape-out mindset
 // =====================================================
 `timescale 1ns/1ps
 
@@ -23,47 +22,55 @@ module AINeuronX_N200_CORE #(
     output logic [DATA_WIDTH*VECTOR_LANES-1:0] output_data
 );
 
-    // =================================================
-    // STAGE 0 — CAPTURE
-    // =================================================
+    // -------------------------
+    // Stage 0
+    // -------------------------
     logic valid_s0;
-    logic [DATA_WIDTH-1:0] a_s0 [VECTOR_LANES-1:0];
-    logic [DATA_WIDTH-1:0] b_s0 [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] a_s0 [0:VECTOR_LANES-1];
+    logic [DATA_WIDTH-1:0] b_s0 [0:VECTOR_LANES-1];
 
-    // =================================================
-    // STAGE 1 — EXECUTE
-    // =================================================
+    // -------------------------
+    // Stage 1
+    // -------------------------
     logic valid_s1;
-    logic [DATA_WIDTH-1:0] sum_s1 [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] sum_s1 [0:VECTOR_LANES-1];
 
-    // =================================================
-    // STAGE 2 — COMMIT
-    // =================================================
+    // -------------------------
+    // Stage 2
+    // -------------------------
     logic valid_s2;
-    logic [DATA_WIDTH-1:0] out_s2 [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] out_s2 [0:VECTOR_LANES-1];
 
-    // =================================================
-    // PIPELINE
-    // =================================================
-always_ff @(posedge clk) begin
-    if (ready_out) begin
-        for (int l=0; l<VECTOR_LANES; l++) begin
-            golden_t g = golden_queue.pop_front();
-            logic [DATA_WIDTH-1:0] out_val;
-            int latency;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            valid_s0   <= 1'b0;
+            valid_s1   <= 1'b0;
+            valid_s2   <= 1'b0;
+            ready_out  <= 1'b0;
+            output_data <= '0;
+        end else begin
+            // -------- Stage 0 --------
+            valid_s0 <= valid_in && prefetch_enable;
+            for (int l = 0; l < VECTOR_LANES; l++) begin
+                a_s0[l] <= input_a[l*DATA_WIDTH +: DATA_WIDTH];
+                b_s0[l] <= input_b[l*DATA_WIDTH +: DATA_WIDTH];
+            end
 
-            out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
-            latency = cycle_count - g.cycle_in;
+            // -------- Stage 1 --------
+            valid_s1 <= valid_s0;
+            for (int l = 0; l < VECTOR_LANES; l++) begin
+                sum_s1[l] <= a_s0[l] + b_s0[l];
+            end
 
-            assert (out_val == g.a + g.b)
-                else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected a+b | Latency=%0d | Lane=%0d | Cycle=%0d",
-                            out_val, latency, l, cycle_count);
+            // -------- Stage 2 --------
+            valid_s2  <= valid_s1;
+            ready_out <= valid_s2;
 
-            assert (latency == 3)
-                else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d | Cycle=%0d",
-                            latency, l, cycle_count);
+            for (int l = 0; l < VECTOR_LANES; l++) begin
+                out_s2[l] <= sum_s1[l];
+                output_data[l*DATA_WIDTH +: DATA_WIDTH] <= out_s2[l];
+            end
         end
     end
-end
 
 endmodule
