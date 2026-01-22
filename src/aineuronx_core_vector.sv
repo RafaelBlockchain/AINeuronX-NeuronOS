@@ -47,7 +47,7 @@ module aineuronx_core_vector #(
             // Operación vectorizada
             if (valid_d) begin
                 for (int l=0; l<VECTOR_LANES; l++) begin
-                    out_lanes[l] = a_lanes[l] + b_lanes[l]; // operación fija suma
+                    out_lanes[l] = a_lanes[l] + b_lanes[l]; // vector suma
                 end
 
                 // Reconstruir output_data
