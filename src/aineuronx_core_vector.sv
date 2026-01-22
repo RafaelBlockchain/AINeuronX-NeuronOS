@@ -1,74 +1,62 @@
+// =====================================================
+// AINEURONX_CORE_VECTOR.SV
+// Core vectorizado – pipeline 1 ciclo por dato, V lanes
+// =====================================================
 `timescale 1ns/1ps
 
 module aineuronx_core_vector #(
     parameter int DATA_WIDTH = 16,
-    parameter int LANES      = 4,
-    parameter int PIPELINE_DEPTH = 3
+    parameter int VECTOR_LANES = 4
 )(
-    input  logic                     clk,
-    input  logic                     rst_n,
-    input  logic                     valid_in,
-    input  logic                     select_precision,
-    input  logic                     prefetch_enable,
-    input  logic [DATA_WIDTH*LANES-1:0] input_a,
-    input  logic [DATA_WIDTH*LANES-1:0] input_b,
-    output logic                     ready_out,
-    output logic [DATA_WIDTH*LANES-1:0] output_data
+    input  logic                        clk,
+    input  logic                        rst_n,
+    input  logic                        valid_in,
+    input  logic                        prefetch_enable,
+    input  logic [DATA_WIDTH*VECTOR_LANES-1:0] input_a,
+    input  logic [DATA_WIDTH*VECTOR_LANES-1:0] input_b,
+    output logic                        ready_out,
+    output logic [DATA_WIDTH*VECTOR_LANES-1:0] output_data
 );
 
-    // ==================================================
-    // Pipeline registers
-    // ==================================================
-    logic [DATA_WIDTH*LANES-1:0] pipe_data [PIPELINE_DEPTH-1:0];
-    logic                        pipe_valid[PIPELINE_DEPTH-1:0];
+    // -------------------------------------------------
+    // Señales internas
+    // -------------------------------------------------
+    logic [DATA_WIDTH-1:0] a_lanes [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] b_lanes [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] out_lanes [VECTOR_LANES-1:0];
 
-    // ==================================================
-    // Inicialización
-    // ==================================================
-    integer i;
+    logic valid_d;
+
+    // -------------------------------------------------
+    // Pipeline 1 ciclo
+    // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            for (i = 0; i < PIPELINE_DEPTH; i=i+1) begin
-                pipe_data[i]  <= '0;
-                pipe_valid[i] <= 0;
-            end
+            valid_d <= 1'b0;
+            ready_out <= 1'b0;
             output_data <= '0;
-            ready_out   <= 0;
         end else begin
-            // ------------------------------------------------
-            // Shift pipeline
-            // ------------------------------------------------
-            for (i = PIPELINE_DEPTH-1; i > 0; i=i-1) begin
-                pipe_data[i]  <= pipe_data[i-1];
-                pipe_valid[i] <= pipe_valid[i-1];
+            valid_d <= valid_in && prefetch_enable;
+            ready_out <= valid_d;
+
+            // Extraer datos de vectores
+            for (int l=0; l<VECTOR_LANES; l++) begin
+                a_lanes[l] = input_a[l*DATA_WIDTH +: DATA_WIDTH];
+                b_lanes[l] = input_b[l*DATA_WIDTH +: DATA_WIDTH];
             end
 
-            // ------------------------------------------------
-            // Entrada nueva
-            // ------------------------------------------------
-            if (valid_in && prefetch_enable) begin
-                for (int l = 0; l < LANES; l++) begin
-                    logic [DATA_WIDTH-1:0] a = input_a[l*DATA_WIDTH +: DATA_WIDTH];
-                    logic [DATA_WIDTH-1:0] b = input_b[l*DATA_WIDTH +: DATA_WIDTH];
-
-                    if (select_precision)
-                        pipe_data[0][l*DATA_WIDTH +: DATA_WIDTH] <= a + b;
-                    else
-                        pipe_data[0][l*DATA_WIDTH +: DATA_WIDTH] <= a - b;
+            // Operación vectorizada
+            if (valid_d) begin
+                for (int l=0; l<VECTOR_LANES; l++) begin
+                    out_lanes[l] = a_lanes[l] + b_lanes[l]; // vector suma
                 end
-                pipe_valid[0] <= 1;
-            end else begin
-                pipe_valid[0] <= 0;
-                pipe_data[0]  <= '0;
-            end
 
-            // ------------------------------------------------
-            // Salida
-            // ------------------------------------------------
-            output_data <= pipe_data[PIPELINE_DEPTH-1];
-            ready_out   <= pipe_valid[PIPELINE_DEPTH-1];
+                // Reconstruir output_data
+                for (int l=0; l<VECTOR_LANES; l++) begin
+                    output_data[l*DATA_WIDTH +: DATA_WIDTH] = out_lanes[l];
+                end
+            end
         end
     end
 
 endmodule
-
