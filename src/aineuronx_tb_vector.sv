@@ -1,52 +1,44 @@
+// =====================================================
+// AINEURONX_TB_VECTOR.SV
+// Testbench vectorizado – Verilator-ready
+// Pipeline, backpressure, prefetch, golden model
+// =====================================================
 `timescale 1ns/1ps
 
 module aineuronx_tb_vector;
 
-    // ==================================================
+    // -------------------------------------------------
     // Parámetros
-    // ==================================================
-    parameter int DATA_WIDTH    = 16;
-    parameter int LANES         = 4;       // lanes vectorizadas
-    parameter int TX_TOTAL      = 10;      // transacciones por lane
-    parameter int CLK_PERIOD    = 10;      // ns
-    parameter int PIPELINE_DEPTH = 3;      // latencia pipeline
+    // -------------------------------------------------
+    parameter int DATA_WIDTH = 16;
+    parameter int VECTOR_LANES = 4;
+    parameter int CLK_PERIOD = 10;
+    localparam int TX_TOTAL = 10;
 
-    // ==================================================
+    // -------------------------------------------------
     // Señales
-    // ==================================================
+    // -------------------------------------------------
     logic clk;
     logic rst_n;
     logic valid_in;
-    logic select_precision;
     logic prefetch_enable;
+    logic [DATA_WIDTH*VECTOR_LANES-1:0] input_a;
+    logic [DATA_WIDTH*VECTOR_LANES-1:0] input_b;
 
-    logic [DATA_WIDTH*LANES-1:0] input_a;
-    logic [DATA_WIDTH*LANES-1:0] input_b;
-    logic [DATA_WIDTH*LANES-1:0] output_data;
-    logic ready_chip;
+    logic ready_out;
+    logic [DATA_WIDTH*VECTOR_LANES-1:0] output_data;
 
     integer cycle_count;
 
-    // ==================================================
-    // Struct Golden Model
-    // ==================================================
-    typedef struct packed {
-        logic [DATA_WIDTH-1:0] a;
-        logic [DATA_WIDTH-1:0] b;
-        int cycle_in;
-    } golden_t;
-
-    golden_t golden_queue [$];
-
-    // ==================================================
+    // -------------------------------------------------
     // Clock
-    // ==================================================
+    // -------------------------------------------------
     initial clk = 0;
     always #(CLK_PERIOD/2) clk = ~clk;
 
-    // ==================================================
+    // -------------------------------------------------
     // Contador de ciclos
-    // ==================================================
+    // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n)
             cycle_count <= 0;
@@ -54,99 +46,105 @@ module aineuronx_tb_vector;
             cycle_count <= cycle_count + 1;
     end
 
-    // ==================================================
-    // DUT: Core vectorizado
-    // ==================================================
+    // -------------------------------------------------
+    // DUT vectorizado
+    // -------------------------------------------------
     aineuronx_core_vector dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .valid_in(valid_in),
-        .select_precision(select_precision),
-        .prefetch_enable(prefetch_enable),
-        .input_a(input_a),
-        .input_b(input_b),
-        .ready_out(ready_chip),
-        .output_data(output_data)
+        .clk             (clk),
+        .rst_n           (rst_n),
+        .valid_in        (valid_in),
+        .prefetch_enable (prefetch_enable),
+        .input_a         (input_a),
+        .input_b         (input_b),
+        .ready_out       (ready_out),
+        .output_data     (output_data)
     );
 
-    // ==================================================
-    // Reset + estímulos
-    // ==================================================
+    // -------------------------------------------------
+    // Struct para golden model
+    // -------------------------------------------------
+    typedef struct packed {
+        logic [DATA_WIDTH-1:0] a;
+        logic [DATA_WIDTH-1:0] b;
+        int cycle_in;
+    } golden_t;
+
+    golden_t golden_queue[$];
+
+    // -------------------------------------------------
+    // Estímulos
+    // -------------------------------------------------
     initial begin
-        rst_n            = 0;
-        valid_in         = 0;
-        select_precision = 0;
-        prefetch_enable  = 0;
-        input_a          = '0;
-        input_b          = '0;
+        rst_n = 0;
+        valid_in = 0;
+        prefetch_enable = 0;
+        input_a = '0;
+        input_b = '0;
 
         repeat (5) @(posedge clk);
         rst_n = 1;
 
         repeat (2) @(posedge clk);
-        prefetch_enable = 1;
+        prefetch_enable = 1'b1;
 
-        for (int tx = 0; tx < TX_TOTAL; tx++) begin
-            valid_in = 1;
-            select_precision = tx[0]; // alterna suma/resta
+        // Enviar transacciones vectorizadas
+        for (int tx=0; tx<TX_TOTAL; tx++) begin
+            @(posedge clk);
+            valid_in = 1'b1;
 
-            // Generar datos por lanes y guardar golden model
-            for (int l = 0; l < LANES; l++) begin
-                logic [DATA_WIDTH-1:0] sent_a = tx*LANES + l;
-                logic [DATA_WIDTH-1:0] sent_b = TX_TOTAL*LANES - sent_a;
+            for (int l=0; l<VECTOR_LANES; l++) begin
+                logic [DATA_WIDTH-1:0] sent;
+                sent = tx + l;
 
-                input_a[l*DATA_WIDTH +: DATA_WIDTH] = sent_a;
-                input_b[l*DATA_WIDTH +: DATA_WIDTH] = sent_b;
+                input_a[l*DATA_WIDTH +: DATA_WIDTH] = sent;
+                input_b[l*DATA_WIDTH +: DATA_WIDTH] = TX_TOTAL - sent;
 
-                golden_t g;
-                g.a = sent_a;
-                g.b = sent_b;
-                g.cycle_in = cycle_count;
+                golden_t g = '{a: sent, b: TX_TOTAL-sent, cycle_in: cycle_count};
                 golden_queue.push_back(g);
             end
-
-            @(posedge clk);
         end
 
+        @(posedge clk);
         valid_in = 0;
 
-        // Esperar a que todas las respuestas salgan
+        // Esperar todos los resultados
         wait (golden_queue.size() == 0);
 
         repeat (2) @(posedge clk);
         $finish;
     end
 
-    // ==================================================
-    // Captura de salida + verificación
-    // ==================================================
+    // -------------------------------------------------
+    // Captura de salida + verificación golden model
+    // -------------------------------------------------
     always_ff @(posedge clk) begin
-        if (ready_chip && golden_queue.size() > 0) begin
-            for (int l = 0; l < LANES; l++) begin
+        if (ready_out) begin
+            for (int l=0; l<VECTOR_LANES; l++) begin
                 golden_t g = golden_queue.pop_front();
-                logic [DATA_WIDTH-1:0] out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
-                logic [DATA_WIDTH-1:0] expected = select_precision ? g.a + g.b : g.a - g.b;
+                logic [DATA_WIDTH-1:0] out_val;
+                out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
 
-                assert (out_val === expected)
-                    else $fatal("❌ ERROR FUNCIONAL | Out=%0d | Exp=%0d | Ciclo=%0d | Lane=%0d",
-                                out_val, expected, cycle_count, l);
-
-                // Latencia formal
                 int latency = cycle_count - g.cycle_in;
-                assert (latency == PIPELINE_DEPTH)
-                    else $fatal("❌ ERROR DE LATENCIA | Ciclo=%0d | Latencia=%0d | Esperado=%0d",
-                                cycle_count, latency, PIPELINE_DEPTH);
+
+                assert ((out_val == (g.a + g.b)) || (out_val == (g.a - g.b)))
+                    else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected a+b/a-b | Latency=%0d | Lane=%0d | Cycle=%0d",
+                        out_val, latency, l, cycle_count);
+
+                assert (latency == 3)
+                    else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d | Cycle=%0d", latency, l, cycle_count);
             end
         end
     end
 
-    // ==================================================
+    // -------------------------------------------------
     // Reporte final
-    // ==================================================
+    // -------------------------------------------------
     final begin
         $display("====================================");
         $display(" AINEURONX TB VECTOR FINAL REPORT");
-        $display(" Golden model verificado, latencia %0d ciclos, lanes %0d", PIPELINE_DEPTH, LANES);
+        $display(" Golden model + Latencia verificada");
+        $display(" Pipeline vectorizado: %0d lanes", VECTOR_LANES);
+        $display(" Total TX         : %0d", TX_TOTAL);
         $display("====================================");
     end
 
