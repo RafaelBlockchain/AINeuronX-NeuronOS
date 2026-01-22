@@ -55,9 +55,7 @@ module aineuronx;
     // -------------------------------------------------
     // DUT REAL
     // -------------------------------------------------
-    aineuronx_core #(
-        .DATA_WIDTH(DATA_WIDTH_FP16)
-    ) dut (
+    aineuronx_core dut (
         .clk              (clk),
         .rst_n            (rst_n),
         .valid_in         (valid_in),
@@ -100,7 +98,7 @@ module aineuronx;
         @(posedge clk);
         valid_in = 1'b0;
 
-        // Esperar todas las respuestas del core real
+        // Esperar todas las respuestas
         wait (output_cycle.size() == input_cycle.size());
 
         repeat (2) @(posedge clk);
@@ -142,12 +140,12 @@ module aineuronx;
 
             assert (latency == 3)
                 else $fatal(
-                    "❌ ERROR DE LATENCIA | TX=%0d | Latencia=%0d ciclos | Esperado=3",
+                    "❌ ERROR DE LATENCIA | TX=%0d | Latencia=%0d | Esperado=3",
                     i, latency
                 );
         end
 
-        $display("✔ Latencia verificada: 3 ciclos fijos para %0d transacciones",
+        $display("✔ Latencia verificada: 3 ciclos fijos (%0d TX)",
                  input_cycle.size());
     end
 
