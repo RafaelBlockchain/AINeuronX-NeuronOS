@@ -1,6 +1,7 @@
 // =====================================================
 // AINeuronX_N200_TB.SV
 // Testbench industrial – Pipeline vectorizado + golden model + latencia formal
+// Verilator-safe
 // =====================================================
 `timescale 1ns/1ps
 
@@ -12,7 +13,7 @@ module AINeuronX_N200_TB;
     parameter int DATA_WIDTH    = 16;
     parameter int VECTOR_LANES  = 4;
     parameter int CLK_PERIOD    = 10;
-    localparam int TX_TOTAL      = 10;
+    localparam int TX_TOTAL     = 10;
 
     // -------------------------------------------------
     // Señales
@@ -44,7 +45,7 @@ module AINeuronX_N200_TB;
     end
 
     // -------------------------------------------------
-    // DUT vectorizado
+    // DUT
     // -------------------------------------------------
     AINeuronX_N200_CORE dut (
         .clk             (clk),
@@ -58,7 +59,7 @@ module AINeuronX_N200_TB;
     );
 
     // -------------------------------------------------
-    // Struct para golden model
+    // Golden model
     // -------------------------------------------------
     typedef struct packed {
         logic [DATA_WIDTH-1:0] a;
@@ -84,25 +85,26 @@ module AINeuronX_N200_TB;
         repeat (2) @(posedge clk);
         prefetch_enable = 1'b1;
 
-        // Enviar transacciones vectorizadas
-        for (int tx=0; tx<TX_TOTAL; tx++) begin
+        for (int tx = 0; tx < TX_TOTAL; tx++) begin
             @(posedge clk);
             valid_in = 1'b1;
-            for (int l=0; l<VECTOR_LANES; l++) begin
+
+            for (int l = 0; l < VECTOR_LANES; l++) begin
                 logic [DATA_WIDTH-1:0] sent;
                 sent = tx + l;
 
                 input_a[l*DATA_WIDTH +: DATA_WIDTH] = sent;
                 input_b[l*DATA_WIDTH +: DATA_WIDTH] = TX_TOTAL - sent;
 
-                golden_queue.push_back('{a: sent, b: TX_TOTAL-sent, cycle_in: cycle_count});
+                golden_queue.push_back(
+                    '{ a: sent, b: TX_TOTAL - sent, cycle_in: cycle_count }
+                );
             end
         end
 
         @(posedge clk);
         valid_in = 0;
 
-        // Esperar todos los resultados
         wait (golden_queue.size() == 0);
 
         repeat (2) @(posedge clk);
@@ -110,23 +112,31 @@ module AINeuronX_N200_TB;
     end
 
     // -------------------------------------------------
-    // Captura de salida + verificación golden model
+    // Verificación + latencia (VERILATOR-SAFE)
     // -------------------------------------------------
     always_ff @(posedge clk) begin
-        if (ready_out) begin
-            for (int l=0; l<VECTOR_LANES; l++) begin
-                golden_t g = golden_queue.pop_front();
-                logic [DATA_WIDTH-1:0] out_val;
-                out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
+        golden_t g;
+        logic [DATA_WIDTH-1:0] out_val;
+        int latency;
 
-                int latency = cycle_count - g.cycle_in;
+        if (ready_out) begin
+            for (int l = 0; l < VECTOR_LANES; l++) begin
+                g = golden_queue.pop_front();
+
+                out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
+                latency = cycle_count - g.cycle_in;
 
                 assert (out_val == g.a + g.b)
-                    else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected a+b | Latency=%0d | Lane=%0d | Cycle=%0d",
-                        out_val, latency, l, cycle_count);
+                    else $fatal(
+                        "ERROR FUNCIONAL | Output=%0d Expected=%0d Latency=%0d Lane=%0d Cycle=%0d",
+                        out_val, g.a + g.b, latency, l, cycle_count
+                    );
 
                 assert (latency == 3)
-                    else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d | Cycle=%0d", latency, l, cycle_count);
+                    else $fatal(
+                        "ERROR LATENCIA | Latency=%0d Lane=%0d Cycle=%0d",
+                        latency, l, cycle_count
+                    );
             end
         end
     end
