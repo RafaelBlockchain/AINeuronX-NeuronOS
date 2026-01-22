@@ -1,15 +1,9 @@
 #!/bin/bash
 
-# -------------------------------------------------
-# Limpieza
-# -------------------------------------------------
 echo "▸ Cleaning previous build..."
 rm -rf obj_dir
 rm -f waves.fst
 
-# -------------------------------------------------
-# Compilación Verilator
-# -------------------------------------------------
 echo "► Verilating RTL + TB..."
 verilator \
     --cc \
@@ -23,9 +17,6 @@ verilator \
     -CFLAGS "-O2 -g" \
     --trace
 
-# -------------------------------------------------
-# Ejecutar simulación
-# -------------------------------------------------
 echo "► Running simulation..."
 ./obj_dir/Vaineuronx_tb_vector
 
