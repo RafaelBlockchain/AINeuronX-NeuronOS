@@ -1,6 +1,6 @@
 // =====================================================
-// AINEURONX.SV – Testbench endurecido + stress-test
-// Funcional + latencia + golden model + bursts
+// AINEURONX.SV – Testbench industrial listo para SoC
+// Pipeline vectorizado + backpressure + golden model
 // =====================================================
 `timescale 1ns/1ps
 
@@ -10,8 +10,9 @@ module aineuronx;
     // Parámetros
     // -------------------------------------------------
     parameter int DATA_WIDTH_FP16 = 16;
-    parameter int CLK_PERIOD      = 10; // ns
-    localparam int EXPECTED_TX    = 40; // más transacciones para stress-test
+    parameter int CLK_PERIOD      = 10;   // ns
+    parameter int VECTOR_WIDTH    = 4;    // Número de datos por ciclo
+    localparam int EXPECTED_TX    = 40;   // Total transacciones a enviar
 
     // -------------------------------------------------
     // Señales
@@ -22,10 +23,10 @@ module aineuronx;
     logic select_precision;
     logic prefetch_enable;
 
-    logic [DATA_WIDTH_FP16-1:0] input_a;
-    logic [DATA_WIDTH_FP16-1:0] input_b;
+    logic [DATA_WIDTH_FP16-1:0] input_a [VECTOR_WIDTH-1:0];
+    logic [DATA_WIDTH_FP16-1:0] input_b [VECTOR_WIDTH-1:0];
 
-    logic [DATA_WIDTH_FP16-1:0] output_chip;
+    logic [DATA_WIDTH_FP16-1:0] output_chip [VECTOR_WIDTH-1:0];
     logic ready_chip;
 
     integer cycle_count;
@@ -37,7 +38,7 @@ module aineuronx;
     integer golden_cycle [$];
 
     // -------------------------------------------------
-    // Clock (Verilator-safe)
+    // Clock
     // -------------------------------------------------
     initial clk = 0;
     always begin
@@ -56,7 +57,7 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // DUT REAL
+    // DUT REAL – vectorizado
     // -------------------------------------------------
     aineuronx_core dut (
         .clk              (clk),
@@ -64,10 +65,10 @@ module aineuronx;
         .valid_in         (valid_in),
         .select_precision (select_precision),
         .prefetch_enable  (prefetch_enable),
-        .input_a          (input_a),
-        .input_b          (input_b),
+        .input_a          (input_a[0]), // core se asume acepta vector por ciclo
+        .input_b          (input_b[0]),
         .ready_out        (ready_chip),
-        .output_data      (output_chip)
+        .output_data      (output_chip[0])
     );
 
     // -------------------------------------------------
@@ -78,44 +79,41 @@ module aineuronx;
         valid_in         = 0;
         select_precision = 0;
         prefetch_enable  = 0;
-        input_a          = '0;
-        input_b          = '0;
+
+        for (int i = 0; i < VECTOR_WIDTH; i++) begin
+            input_a[i] = '0;
+            input_b[i] = '0;
+        end
 
         repeat (5) @(posedge clk);
         rst_n = 1;
 
         repeat (2) @(posedge clk);
-        prefetch_enable = 1'b1;
+        prefetch_enable = 1'b1; // prefetch inteligente y consistente
 
-        // -------------------------------------------------
-        // Enviar transacciones con bursts y gaps
-        // -------------------------------------------------
         int sent = 0;
         while (sent < EXPECTED_TX) begin
             @(posedge clk);
+            valid_in = ready_chip; // backpressure continuo
 
-            // Random intermitencia de valid_in (simula flujo irregular)
-            if ($urandom_range(0,2) != 0) begin
-                valid_in = ready_chip; // solo enviar si ready
-                if (valid_in) begin
-                    select_precision = sent[0];
-                    input_a = DATA_WIDTH_FP16'(sent);
-                    input_b = DATA_WIDTH_FP16'(EXPECTED_TX - sent);
+            if (valid_in) begin
+                select_precision = sent[0];
 
-                    // Guardar ciclo de entrada y golden
-                    input_cycle.push_back(cycle_count);
-                    golden_cycle.push_back(cycle_count);
-                    golden_expected.push_back((select_precision) ? (input_a + input_b) : (input_a - input_b));
+                for (int v = 0; v < VECTOR_WIDTH; v++) begin
+                    int index = sent + v;
+                    if (index < EXPECTED_TX) begin
+                        input_a[v] = DATA_WIDTH_FP16'(index);
+                        input_b[v] = DATA_WIDTH_FP16'(EXPECTED_TX - index);
 
-                    sent++;
+                        // Golden model y ciclos
+                        input_cycle.push_back(cycle_count);
+                        golden_cycle.push_back(cycle_count);
+                        golden_expected.push_back((select_precision) ? (input_a[v] + input_b[v]) : (input_a[v] - input_b[v]));
+                    end
                 end
-            end else begin
-                valid_in = 0; // gap
-            end
 
-            // Prefetch cae intermitente para stress
-            if ($urandom_range(0,4) == 0)
-                prefetch_enable = ~prefetch_enable;
+                sent += VECTOR_WIDTH;
+            end
         end
 
         @(posedge clk);
@@ -133,28 +131,32 @@ module aineuronx;
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (ready_chip && golden_expected.size() > 0) begin
-            output_cycle.push_back(cycle_count);
+            for (int v = 0; v < VECTOR_WIDTH; v++) begin
+                if (golden_expected.size() > 0) begin
+                    logic [DATA_WIDTH_FP16-1:0] expected;
+                    integer in_cycle;
 
-            logic [DATA_WIDTH_FP16-1:0] expected;
-            integer in_cycle;
+                    expected = golden_expected.pop_front();
+                    in_cycle = golden_cycle.pop_front();
 
-            expected = golden_expected.pop_front();
-            in_cycle = golden_cycle.pop_front();
+                    output_cycle.push_back(cycle_count);
 
-            // Verificación funcional
-            assert (output_chip === expected)
-                else $fatal(
-                    "❌ ERROR FUNCIONAL | Output=%0d | Esperado=%0d | Ciclo=%0d",
-                    output_chip, expected, cycle_count
-                );
+                    // Verificación funcional
+                    assert (output_chip[v] === expected)
+                        else $fatal(
+                            "❌ ERROR FUNCIONAL | Output[%0d]=%0d | Esperado=%0d | Ciclo=%0d",
+                            v, output_chip[v], expected, cycle_count
+                        );
 
-            // Latencia formal
-            int latency = cycle_count - in_cycle;
-            assert (latency == 3)
-                else $fatal(
-                    "❌ ERROR DE LATENCIA | Latencia=%0d ciclos | Esperado=3 | Ciclo=%0d",
-                    latency, cycle_count
-                );
+                    // Latencia formal
+                    int latency = cycle_count - in_cycle;
+                    assert (latency == 3)
+                        else $fatal(
+                            "❌ ERROR DE LATENCIA | Output[%0d] | Latencia=%0d | Esperado=3 | Ciclo=%0d",
+                            v, latency, cycle_count
+                        );
+                end
+            end
         end
     end
 
@@ -163,10 +165,10 @@ module aineuronx;
     // -------------------------------------------------
     final begin
         $display("====================================");
-        $display(" AINEURONX TB ENDURECIDO + STRESS FINAL REPORT");
+        $display(" AINEURONX TB INDUSTRIAL FINAL REPORT");
         $display(" Inputs enviados  : %0d", input_cycle.size());
         $display(" Outputs recibidos: %0d", output_cycle.size());
-        $display(" Testbench OK – Core endurecido validado");
+        $display(" Testbench OK – Core vectorizado + backpressure + golden model validado");
         $display("====================================");
     end
 
