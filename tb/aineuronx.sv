@@ -1,7 +1,6 @@
 // =====================================================
-// AINEURONX.SV
-// Testbench real conectado a aineuronx_core
-// Verificación funcional + latencia fija
+// AINEURONX.SV – Testbench endurecido
+// Funcional + latencia + golden model
 // =====================================================
 `timescale 1ns/1ps
 
@@ -32,6 +31,14 @@ module aineuronx;
     integer cycle_count;
     integer input_cycle  [$];
     integer output_cycle [$];
+
+    // Cola para golden model
+    typedef struct packed {
+        logic [DATA_WIDTH_FP16-1:0] expected;
+        integer cycle_in;
+    } golden_t;
+
+    golden_t golden_queue [$];
 
     // -------------------------------------------------
     // Clock (Verilator-safe)
@@ -84,15 +91,31 @@ module aineuronx;
         repeat (2) @(posedge clk);
         prefetch_enable = 1'b1;
 
-        for (int i = 0; i < EXPECTED_TX; i++) begin
+        // -------------------------------------------------
+        // Enviar transacciones respetando ready_out
+        // -------------------------------------------------
+        for (int i = 0; i < EXPECTED_TX; ) begin
             @(posedge clk);
-            valid_in         = 1'b1;
-            select_precision = i[0];
 
-            input_a = DATA_WIDTH_FP16'(i);
-            input_b = DATA_WIDTH_FP16'(EXPECTED_TX - i);
+            // Solo enviar si ready
+            if (ready_chip) begin
+                valid_in         = 1'b1;
+                select_precision = i[0];
+                input_a          = DATA_WIDTH_FP16'(i);
+                input_b          = DATA_WIDTH_FP16'(EXPECTED_TX - i);
 
-            input_cycle.push_back(cycle_count);
+                // Guardar ciclo de entrada y golden
+                input_cycle.push_back(cycle_count);
+
+                golden_t g;
+                g.cycle_in = cycle_count;
+                g.expected = (select_precision) ? (input_a + input_b) : (input_a - input_b);
+                golden_queue.push_back(g);
+
+                i++; // avanzar transacción
+            end else begin
+                valid_in = 1'b0;
+            end
         end
 
         @(posedge clk);
@@ -106,47 +129,41 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // Captura de salida
+    // Captura de salida + verificación GOLDEN
     // -------------------------------------------------
     always_ff @(posedge clk) begin
-        if (ready_chip) begin
+        if (ready_chip && golden_queue.size() > 0) begin
             output_cycle.push_back(cycle_count);
 
-            assert (output_chip !== 'x)
-                else $fatal("❌ Output indefinido detectado");
-        end
-    end
+            golden_t g = golden_queue.pop_front();
 
-    // -------------------------------------------------
-    // Reporte funcional
-    // -------------------------------------------------
-    final begin
-        $display("====================================");
-        $display(" AINEURONX TB FINAL REPORT");
-        $display(" Inputs enviados  : %0d", input_cycle.size());
-        $display(" Outputs recibidos: %0d", output_cycle.size());
-        $display(" Testbench OK – Core real conectado");
-        $display("====================================");
-    end
+            // Verificación funcional
+            assert (output_chip === g.expected)
+                else $fatal(
+                    "❌ ERROR FUNCIONAL | Output=%0d | Esperado=%0d | Ciclo=%0d",
+                    output_chip, g.expected, cycle_count
+                );
 
-    // -------------------------------------------------
-    // Verificación FORMAL de latencia
-    // Latencia esperada: 3 ciclos
-    // -------------------------------------------------
-    final begin
-        for (int i = 0; i < input_cycle.size(); i++) begin
-            int latency;
-            latency = output_cycle[i] - input_cycle[i];
-
+            // Latencia formal
+            int latency = cycle_count - g.cycle_in;
             assert (latency == 3)
                 else $fatal(
-                    "❌ ERROR DE LATENCIA | TX=%0d | Latencia=%0d | Esperado=3",
-                    i, latency
+                    "❌ ERROR DE LATENCIA | Latencia=%0d ciclos | Esperado=3 | Ciclo=%0d",
+                    latency, cycle_count
                 );
         end
+    end
 
-        $display("✔ Latencia verificada: 3 ciclos fijos (%0d TX)",
-                 input_cycle.size());
+    // -------------------------------------------------
+    // Reporte final
+    // -------------------------------------------------
+    final begin
+        $display("====================================");
+        $display(" AINEURONX TB ENDURECIDO FINAL REPORT");
+        $display(" Inputs enviados  : %0d", input_cycle.size());
+        $display(" Outputs recibidos: %0d", output_cycle.size());
+        $display(" Testbench OK – Core endurecido validado");
+        $display("====================================");
     end
 
 endmodule
