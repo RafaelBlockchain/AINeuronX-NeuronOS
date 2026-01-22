@@ -1,15 +1,9 @@
 #!/bin/bash
-# ==================================================
-# Build & simulate AINeuronX_N200 with Verilator
-# ==================================================
-
-set -e
-
 echo "▸ Cleaning previous build..."
 rm -rf obj_dir
 
 echo "► Verilating RTL + TB..."
-verilator -Wall --cc --exe --build \
+verilator -Wall --timing --cc --exe --build \
     src/AINeuronX_N200_CORE.SV \
     src/AINeuronX_N200_TB.SV \
     --trace
