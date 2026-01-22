@@ -1,14 +1,13 @@
 // =====================================================
 // AINeuronX_N200_CORE.SV
-// Core vectorizado – pipeline profundo, V lanes
-// Prefetch dinámico + backpressure industrial
+// Core vectorizado – pipeline 1 ciclo por dato, V lanes
+// Industrial, listo para integración golden + latencia formal
 // =====================================================
 `timescale 1ns/1ps
 
-module aineuronx_n200_core #(
-    parameter int DATA_WIDTH   = 16,
-    parameter int VECTOR_LANES = 4,
-    parameter int PIPE_DEPTH   = 3   // pipeline profundo
+module AINeuronX_N200_CORE #(
+    parameter int DATA_WIDTH    = 16,
+    parameter int VECTOR_LANES  = 4
 )(
     input  logic                        clk,
     input  logic                        rst_n,
@@ -21,50 +20,41 @@ module aineuronx_n200_core #(
 );
 
     // -------------------------------------------------
-    // Pipeline interno por lane
+    // Señales internas
     // -------------------------------------------------
-    logic [DATA_WIDTH-1:0] a_lanes     [VECTOR_LANES-1:0];
-    logic [DATA_WIDTH-1:0] b_lanes     [VECTOR_LANES-1:0];
-    logic [DATA_WIDTH-1:0] out_lanes   [VECTOR_LANES-1:0];
-    logic                   valid_pipe [PIPE_DEPTH-1:0];
+    logic [DATA_WIDTH-1:0] a_lanes [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] b_lanes [VECTOR_LANES-1:0];
+    logic [DATA_WIDTH-1:0] out_lanes [VECTOR_LANES-1:0];
+    logic valid_d;
 
     // -------------------------------------------------
-    // Inicialización
+    // Pipeline vectorizado 1 ciclo
     // -------------------------------------------------
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            for (int l=0; l<VECTOR_LANES; l++) begin
-                out_lanes[l] <= '0;
-            end
-            for (int p=0; p<PIPE_DEPTH; p++)
-                valid_pipe[p] <= 1'b0;
-            ready_out <= 1'b0;
+            valid_d    <= 1'b0;
+            ready_out  <= 1'b0;
             output_data <= '0;
         end else begin
-            // Shift pipeline
-            valid_pipe[0] <= valid_in && prefetch_enable;
-            for (int p=1; p<PIPE_DEPTH; p++)
-                valid_pipe[p] <= valid_pipe[p-1];
+            valid_d    <= valid_in && prefetch_enable;
+            ready_out  <= valid_d;
 
-            ready_out <= !valid_pipe[PIPE_DEPTH-1]; // backpressure real
-
-            // Cargar lanes solo si hay entrada válida
-            if (valid_pipe[0]) begin
-                for (int l=0; l<VECTOR_LANES; l++) begin
-                    a_lanes[l] <= input_a[l*DATA_WIDTH +: DATA_WIDTH];
-                    b_lanes[l] <= input_b[l*DATA_WIDTH +: DATA_WIDTH];
-                end
+            // Extraer datos de vectores
+            for (int l=0; l<VECTOR_LANES; l++) begin
+                a_lanes[l] <= input_a[l*DATA_WIDTH +: DATA_WIDTH];
+                b_lanes[l] <= input_b[l*DATA_WIDTH +: DATA_WIDTH];
             end
 
-            // Calcular salida pipeline profunda
-            if (valid_pipe[PIPE_DEPTH-1]) begin
+            // Operación vectorizada
+            if (valid_d) begin
                 for (int l=0; l<VECTOR_LANES; l++) begin
-                    out_lanes[l] <= a_lanes[l] + b_lanes[l]; // operación vector
+                    out_lanes[l] <= a_lanes[l] + b_lanes[l]; // sumar vector
                 end
 
                 // Reconstruir output_data
-                for (int l=0; l<VECTOR_LANES; l++)
+                for (int l=0; l<VECTOR_LANES; l++) begin
                     output_data[l*DATA_WIDTH +: DATA_WIDTH] <= out_lanes[l];
+                end
             end
         end
     end
