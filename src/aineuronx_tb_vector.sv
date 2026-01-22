@@ -12,7 +12,7 @@ module aineuronx_tb_vector;
     // -------------------------------------------------
     parameter int DATA_WIDTH = 16;
     parameter int VECTOR_LANES = 4;
-    parameter int CLK_PERIOD = 10;
+    parameter int CLK_PERIOD = 10; // ns
     localparam int TX_TOTAL = 10;
 
     // -------------------------------------------------
@@ -24,9 +24,9 @@ module aineuronx_tb_vector;
     logic prefetch_enable;
     logic [DATA_WIDTH*VECTOR_LANES-1:0] input_a;
     logic [DATA_WIDTH*VECTOR_LANES-1:0] input_b;
-
     logic ready_out;
     logic [DATA_WIDTH*VECTOR_LANES-1:0] output_data;
+
     integer cycle_count;
 
     // -------------------------------------------------
@@ -71,6 +71,14 @@ module aineuronx_tb_vector;
     golden_t golden_queue[$];
 
     // -------------------------------------------------
+    // Variables temporales
+    // -------------------------------------------------
+    golden_t g;
+    logic [DATA_WIDTH-1:0] sent;
+    logic [DATA_WIDTH-1:0] out_val;
+    int latency;
+
+    // -------------------------------------------------
     // Estímulos
     // -------------------------------------------------
     initial begin
@@ -78,14 +86,13 @@ module aineuronx_tb_vector;
         valid_in = 0;
         prefetch_enable = 0;
         input_a = '0;
-        input_b = '0;
+        input_b = '0';
 
         repeat (5) @(posedge clk);
         rst_n = 1;
+
         repeat (2) @(posedge clk);
         prefetch_enable = 1'b1;
-
-        golden_t g;
 
         // Enviar transacciones vectorizadas
         for (int tx=0; tx<TX_TOTAL; tx++) begin
@@ -93,12 +100,11 @@ module aineuronx_tb_vector;
             valid_in = 1'b1;
 
             for (int l=0; l<VECTOR_LANES; l++) begin
-                logic [DATA_WIDTH-1:0] sent;
                 sent = tx + l;
-
                 input_a[l*DATA_WIDTH +: DATA_WIDTH] = sent;
                 input_b[l*DATA_WIDTH +: DATA_WIDTH] = TX_TOTAL - sent;
 
+                // Crear golden model entry
                 g.a = sent;
                 g.b = TX_TOTAL - sent;
                 g.cycle_in = cycle_count;
@@ -120,22 +126,19 @@ module aineuronx_tb_vector;
     // Captura de salida + verificación golden model
     // -------------------------------------------------
     always_ff @(posedge clk) begin
-        if (ready_out && golden_queue.size() >= VECTOR_LANES) begin
+        if (ready_out) begin
             for (int l=0; l<VECTOR_LANES; l++) begin
-                golden_t g;
                 g = golden_queue.pop_front();
-
-                logic [DATA_WIDTH-1:0] out_val;
                 out_val = output_data[l*DATA_WIDTH +: DATA_WIDTH];
+                latency = cycle_count - g.cycle_in;
 
-                int latency = cycle_count - g.cycle_in;
+                assert (out_val == (g.a + g.b))
+                    else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected a+b | Latency=%0d | Lane=%0d | Cycle=%0d",
+                        out_val, latency, l, cycle_count);
 
-                assert(out_val == (g.a + g.b))
-                    else $fatal("❌ ERROR FUNCIONAL | Output=%0d | Expected=%0d | Latency=%0d | Lane=%0d",
-                                out_val, g.a+g.b, latency, l);
-
-                assert(latency == 1)
-                    else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d", latency, l);
+                assert (latency == 3)
+                    else $fatal("❌ ERROR DE LATENCIA | Latency=%0d | Lane=%0d | Cycle=%0d",
+                        latency, l, cycle_count);
             end
         end
     end
