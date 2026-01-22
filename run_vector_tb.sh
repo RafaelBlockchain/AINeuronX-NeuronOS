@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==================================================
 # Script de compilación y simulación Verilator
-# para AINeuronX core vectorizado + TB
+# para AINeuronX core vectorizado + TB industrial
 # ==================================================
 
 # Limpiar compilaciones anteriores
