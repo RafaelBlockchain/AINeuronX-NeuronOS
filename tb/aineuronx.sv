@@ -1,6 +1,6 @@
 // =====================================================
-// AINEURONX.SV – Testbench endurecido
-// Funcional + latencia + golden model
+// AINEURONX.SV – Testbench endurecido + stress-test
+// Funcional + latencia + golden model + bursts
 // =====================================================
 `timescale 1ns/1ps
 
@@ -11,7 +11,7 @@ module aineuronx;
     // -------------------------------------------------
     parameter int DATA_WIDTH_FP16 = 16;
     parameter int CLK_PERIOD      = 10; // ns
-    localparam int EXPECTED_TX    = 20;
+    localparam int EXPECTED_TX    = 40; // más transacciones para stress-test
 
     // -------------------------------------------------
     // Señales
@@ -32,13 +32,9 @@ module aineuronx;
     integer input_cycle  [$];
     integer output_cycle [$];
 
-    // Cola para golden model
-    typedef struct packed {
-        logic [DATA_WIDTH_FP16-1:0] expected;
-        integer cycle_in;
-    } golden_t;
-
-    golden_t golden_queue [$];
+    // Golden model arrays
+    logic [DATA_WIDTH_FP16-1:0] golden_expected [$];
+    integer golden_cycle [$];
 
     // -------------------------------------------------
     // Clock (Verilator-safe)
@@ -92,34 +88,38 @@ module aineuronx;
         prefetch_enable = 1'b1;
 
         // -------------------------------------------------
-        // Enviar transacciones respetando ready_out
+        // Enviar transacciones con bursts y gaps
         // -------------------------------------------------
-        for (int i = 0; i < EXPECTED_TX; ) begin
+        int sent = 0;
+        while (sent < EXPECTED_TX) begin
             @(posedge clk);
 
-            // Solo enviar si ready
-            if (ready_chip) begin
-                valid_in         = 1'b1;
-                select_precision = i[0];
-                input_a          = DATA_WIDTH_FP16'(i);
-                input_b          = DATA_WIDTH_FP16'(EXPECTED_TX - i);
+            // Random intermitencia de valid_in (simula flujo irregular)
+            if ($urandom_range(0,2) != 0) begin
+                valid_in = ready_chip; // solo enviar si ready
+                if (valid_in) begin
+                    select_precision = sent[0];
+                    input_a = DATA_WIDTH_FP16'(sent);
+                    input_b = DATA_WIDTH_FP16'(EXPECTED_TX - sent);
 
-                // Guardar ciclo de entrada y golden
-                input_cycle.push_back(cycle_count);
+                    // Guardar ciclo de entrada y golden
+                    input_cycle.push_back(cycle_count);
+                    golden_cycle.push_back(cycle_count);
+                    golden_expected.push_back((select_precision) ? (input_a + input_b) : (input_a - input_b));
 
-                golden_t g;
-                g.cycle_in = cycle_count;
-                g.expected = (select_precision) ? (input_a + input_b) : (input_a - input_b);
-                golden_queue.push_back(g);
-
-                i++; // avanzar transacción
+                    sent++;
+                end
             end else begin
-                valid_in = 1'b0;
+                valid_in = 0; // gap
             end
+
+            // Prefetch cae intermitente para stress
+            if ($urandom_range(0,4) == 0)
+                prefetch_enable = ~prefetch_enable;
         end
 
         @(posedge clk);
-        valid_in = 1'b0;
+        valid_in = 0;
 
         // Esperar todas las respuestas
         wait (output_cycle.size() == input_cycle.size());
@@ -132,20 +132,24 @@ module aineuronx;
     // Captura de salida + verificación GOLDEN
     // -------------------------------------------------
     always_ff @(posedge clk) begin
-        if (ready_chip && golden_queue.size() > 0) begin
+        if (ready_chip && golden_expected.size() > 0) begin
             output_cycle.push_back(cycle_count);
 
-            golden_t g = golden_queue.pop_front();
+            logic [DATA_WIDTH_FP16-1:0] expected;
+            integer in_cycle;
+
+            expected = golden_expected.pop_front();
+            in_cycle = golden_cycle.pop_front();
 
             // Verificación funcional
-            assert (output_chip === g.expected)
+            assert (output_chip === expected)
                 else $fatal(
                     "❌ ERROR FUNCIONAL | Output=%0d | Esperado=%0d | Ciclo=%0d",
-                    output_chip, g.expected, cycle_count
+                    output_chip, expected, cycle_count
                 );
 
             // Latencia formal
-            int latency = cycle_count - g.cycle_in;
+            int latency = cycle_count - in_cycle;
             assert (latency == 3)
                 else $fatal(
                     "❌ ERROR DE LATENCIA | Latencia=%0d ciclos | Esperado=3 | Ciclo=%0d",
@@ -159,7 +163,7 @@ module aineuronx;
     // -------------------------------------------------
     final begin
         $display("====================================");
-        $display(" AINEURONX TB ENDURECIDO FINAL REPORT");
+        $display(" AINEURONX TB ENDURECIDO + STRESS FINAL REPORT");
         $display(" Inputs enviados  : %0d", input_cycle.size());
         $display(" Outputs recibidos: %0d", output_cycle.size());
         $display(" Testbench OK – Core endurecido validado");
