@@ -1,6 +1,7 @@
 // =====================================================
 // AINEURONX.SV
 // Testbench real conectado a aineuronx_core
+// Verificación funcional + latencia fija
 // =====================================================
 `timescale 1ns/1ps
 
@@ -37,8 +38,8 @@ module aineuronx;
     // -------------------------------------------------
     initial clk = 0;
     always begin
-    #(CLK_PERIOD/2);
-    clk <= ~clk;
+        #(CLK_PERIOD/2);
+        clk <= ~clk;
     end
 
     // -------------------------------------------------
@@ -119,7 +120,7 @@ module aineuronx;
     end
 
     // -------------------------------------------------
-    // Reporte final
+    // Reporte funcional
     // -------------------------------------------------
     final begin
         $display("====================================");
@@ -128,6 +129,26 @@ module aineuronx;
         $display(" Outputs recibidos: %0d", output_cycle.size());
         $display(" Testbench OK – Core real conectado");
         $display("====================================");
+    end
+
+    // -------------------------------------------------
+    // Verificación FORMAL de latencia
+    // Latencia esperada: 3 ciclos
+    // -------------------------------------------------
+    final begin
+        for (int i = 0; i < input_cycle.size(); i++) begin
+            int latency;
+            latency = output_cycle[i] - input_cycle[i];
+
+            assert (latency == 3)
+                else $fatal(
+                    "❌ ERROR DE LATENCIA | TX=%0d | Latencia=%0d ciclos | Esperado=3",
+                    i, latency
+                );
+        end
+
+        $display("✔ Latencia verificada: 3 ciclos fijos para %0d transacciones",
+                 input_cycle.size());
     end
 
 endmodule
