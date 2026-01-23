@@ -5,24 +5,18 @@
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
-    // Crear instancia del TB
     VAINeuronX_ARRAY_2x2_TB* tb = new VAINeuronX_ARRAY_2x2_TB;
 
-    // Habilitar tracing
     Verilated::traceEverOn(true);
     VerilatedVcdC* tfp = new VerilatedVcdC;
     tb->trace(tfp, 99);
     tfp->open("wave_array_2x2.vcd");
 
-    // Inicialización de señales en TB
-    tb->eval(); // eval inicial
     vluint64_t sim_time = 0;
 
-    // Simulación hasta $finish
     while (!Verilated::gotFinish()) {
-        tb->eval();          // evaluar el DUT
-        tfp->dump(sim_time); // guardar waveform
-        Verilated::timeInc(1); // avanzar tiempo
+        tb->eval();
+        tfp->dump(sim_time);
         sim_time++;
     }
 
@@ -30,6 +24,6 @@ int main(int argc, char** argv) {
     delete tb;
     delete tfp;
 
-    printf("✔ Simulation finished (ARRAY 2x2)\n");
+    printf("✔ ARRAY 2x2 simulation finished\n");
     return 0;
 }
