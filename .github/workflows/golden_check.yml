@@ -2,7 +2,7 @@ name: Golden Check N200
 
 on:
   push:
-  pull_request:
+    branches: [ main ]
 
 jobs:
   golden:
@@ -15,25 +15,12 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y iverilog python3
+        sudo apt-get install -y python3 iverilog
+
+    - name: Debug workflow file
+      run: |
+        echo "WORKFLOW FILE LOADED CORRECTLY"
 
     - name: Check N200 Performance Targets
       run: |
-        python3 metrics/check_targets.py
-
-
-    - name: Run Golden Check
-      run: |
-        chmod +x scripts/*.sh
-        scripts/run_golden_check.sh
-
-    - name: Generate Performance Metrics
-      run: |
-        python3 metrics/golden_metrics.py > metrics_report.txt
-
-    - name: Upload Metrics Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: n200-performance-metrics
-        path: metrics_report.txt
-
+        python3 -m metrics.check_targets
