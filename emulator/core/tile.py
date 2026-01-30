@@ -1,6 +1,6 @@
 from emulator.core.state import TileState
 from emulator.core.isa import LATENCY_TABLE
-from memory.dma import DMARequest
+from emulator.memory.dma import DMARequest
 
 class Tile:
     def __init__(self, tile_id, program, scoreboard, dma_engine, logger):

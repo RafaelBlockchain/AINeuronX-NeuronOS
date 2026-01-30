@@ -1,6 +1,6 @@
 from emulator.core.clock import Clock
 from emulator.core.state import GlobalState
-from memory.dma import DMAEngine
+from emulator.memory.dma import DMAEngine
 from emulator.noc.noc import NoC
 
 self.noc = NoC(width=4, height=4, hop_latency=1, logger=self.logger)
