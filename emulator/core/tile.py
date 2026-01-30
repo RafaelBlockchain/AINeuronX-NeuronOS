@@ -1,5 +1,5 @@
-from core.state import TileState
-from core.isa import LATENCY_TABLE
+from emulator.core.state import TileState
+from emulator.core.isa import LATENCY_TABLE
 from memory.dma import DMARequest
 
 class Tile:

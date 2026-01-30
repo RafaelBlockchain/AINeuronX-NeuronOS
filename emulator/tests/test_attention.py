@@ -1,4 +1,4 @@
-from core.kernel import Kernel
+from emulator.core.kernel import Kernel
 from models.attention import attention
 
 def test_attention():

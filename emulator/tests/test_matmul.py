@@ -1,4 +1,4 @@
-from core.kernel import Kernel
+from emulator.core.kernel import Kernel
 from models.matmul import matmul
 
 def test_matmul():

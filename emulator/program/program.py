@@ -1,5 +1,5 @@
-from core.isa import Opcode
-from core.instruction import Instruction
+from emulator.core.isa import Opcode
+from emulator.core.instruction import Instruction
 
 def dma_test_program():
     return [

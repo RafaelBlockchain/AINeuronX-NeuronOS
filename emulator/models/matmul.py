@@ -1,4 +1,4 @@
-from core.isa import Instruction, OpCode
+from emulator.core.isa import Instruction, OpCode
 
 def matmul(a, b, out):
     return Instruction(

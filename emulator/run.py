@@ -1,8 +1,8 @@
-from core.emulator import Emulator
-from core.scoreboard import Scoreboard
-from core.tile import Tile
-from logging.logger import EventLogger
-from program.program import simple_program
+from emulator.core.emulator import Emulator
+from emulator.core.scoreboard import Scoreboard
+from emulator.core.tile import Tile
+from emulator.logging.logger import EventLogger
+from emulator.program.program import simple_program
 
 logger = EventLogger()
 
@@ -16,3 +16,5 @@ emu.run()
 
 for e in logger.events:
     print(e)
+
+    logger.export("emu_trace.json")

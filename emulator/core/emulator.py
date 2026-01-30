@@ -1,5 +1,5 @@
-from core.clock import Clock
-from core.state import GlobalState
+from emulator.core.clock import Clock
+from emulator.core.state import GlobalState
 from memory.dma import DMAEngine
 from emulator.noc.noc import NoC
 
