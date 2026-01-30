@@ -1,0 +1,34 @@
+name: Golden Check N200
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iverilog python3
+
+    - name: Run Golden Check
+      run: |
+        chmod +x scripts/*.sh
+        scripts/run_golden_check.sh
+
+    - name: Generate Performance Metrics
+      run: |
+        python3 metrics/golden_metrics.py > metrics_report.txt
+
+    - name: Upload Metrics Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: n200-performance-metrics
+        path: metrics_report.txt
+
