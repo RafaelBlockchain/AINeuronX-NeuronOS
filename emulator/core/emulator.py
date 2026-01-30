@@ -30,7 +30,8 @@ class Emulator:
 
         self.logger.log({
             "cycle": cycle,
-            "opcode": "NOP"
+            "opcode": "NOP",
+            "event": "COMMIT"
         })
 
         self.dma.step()
