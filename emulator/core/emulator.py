@@ -28,10 +28,9 @@ class Emulator:
         self.clock.tick()
         cycle = self.clock.cycle
 
-        # Golden minimal event
         self.logger.log({
             "cycle": cycle,
-            "event": "tick"
+            "opcode": "NOP"
         })
 
         self.dma.step()

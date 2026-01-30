@@ -16,6 +16,11 @@ def compute_ipc(trace):
     return instructions / cycles if cycles > 0 else 0.0
 
 def utilization(trace, prefix):
-    active = len([e for e in trace if e["opcode"] and e["opcode"].startswith(prefix)])
-    total = max(e["cycle"] for e in trace)
-    return active / total if total > 0 else 0
+    if not trace:
+        return 0.0
+
+    active = len(
+        e for e in trace
+        if e.get("opcode") and e["opcode"].startswith(prefix)
+    )
+    return active / len(trace)
