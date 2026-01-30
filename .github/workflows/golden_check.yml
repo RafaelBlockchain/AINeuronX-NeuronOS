@@ -19,7 +19,7 @@ jobs:
 
     - name: Run Golden Emulator
       run: |
-        python3 emulator/run.py
+        python3 -m emulator.run
         ls -l emu_trace.json
 
     - name: Check N200 Performance Targets
