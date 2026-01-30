@@ -1,42 +1,45 @@
 from emulator.core.clock import Clock
 from emulator.core.state import GlobalState
-from emulator.memory.dma import DMAEngine
 from emulator.noc.noc import NoC
+from emulator.memory.dma import DMAEngine
+from emulator.logging.logger import EventLogger
 
-self.noc = NoC(width=4, height=4, hop_latency=1, logger=self.logger)
 
 class Emulator:
-    def __init__(self, tiles, logger):
+    def __init__(self, tiles, max_cycle=1000, width=4, height=4, hop_latency=1):
+        self.logger = EventLogger()
+
         self.clock = Clock()
         self.tiles = tiles
-        self.logger = logger
         self.state = GlobalState.RUNNING
+        self.max_cycle = max_cycle
+
+        self.noc = NoC(
+            width=width,
+            height=height,
+            hop_latency=hop_latency,
+            logger=self.logger,
+        )
+
         self.dma = DMAEngine()
 
     def step(self):
         self.clock.tick()
         cycle = self.clock.cycle
 
-        # 1. avanzar DMA
         self.dma.step()
-
-        # avanzar NoC
         self.noc.step(cycle)
 
-        # 2. issue instrucciones
-        for tile in self.tiles:
-            if tile.can_issue():
-                tile.issue(cycle)
-
-        # 3. ejecutar / commit
         for tile in self.tiles:
             tile.step(cycle)
 
-        # 4. fin del programa
-        if all(tile.pc >= len(tile.program) and tile.current is None for tile in self.tiles):
+        if all(
+            tile.pc >= len(tile.program) and tile.current is None
+            for tile in self.tiles
+        ):
             self.state = GlobalState.DONE
 
-    def run(self, max_cycles=100000):
-        while self.state == GlobalState.RUNNING and self.clock.cycle < max_cycles:
+    def run(self):
+        while self.state == GlobalState.RUNNING and self.clock.cycle < self.max_cycle:
             self.step()
 
