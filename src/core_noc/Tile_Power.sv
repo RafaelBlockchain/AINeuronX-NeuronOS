@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 // File: src/core_noc/Tile_Power.sv
 module Tile_Power (
     input  logic clk_in,

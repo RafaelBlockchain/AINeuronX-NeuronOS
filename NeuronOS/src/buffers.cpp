@@ -1,15 +1,9 @@
-#include "buffers.h"
-
-Buffer::Buffer(int size) {
-    data.resize(size, 0.0f);
+void Buffer::load_from_dram(uint64_t addr, uint32_t size) {
+    dma_id = hw::dma_recv(addr, data, size);
 }
 
-void Buffer::write(int index, float value) {
-    if(index < data.size()) data[index] = value;
-}
-
-float Buffer::read(int index) {
-    if(index < data.size()) return data[index];
-    return 0.0f;
+void Buffer::wait_ready() {
+    if (dma_id != INVALID_DMA)
+        hw::sync_dma(dma_id);
 }
 

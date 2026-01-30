@@ -17,6 +17,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y iverilog python3
 
+    - name: Check N200 Performance Targets
+      run: |
+        python3 metrics/check_targets.py
+
+
     - name: Run Golden Check
       run: |
         chmod +x scripts/*.sh

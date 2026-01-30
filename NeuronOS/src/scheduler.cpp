@@ -1,21 +1,36 @@
 #include "scheduler.h"
-#include <iostream>
+#include "runtime_hw_if.h"
 
-Scheduler::Scheduler(int num_clusters, int subarrays_per_cluster) {
-    clusters = num_clusters;
-    subarrays = subarrays_per_cluster;
-}
+void Scheduler::run_task(const Task& task) {
+    for (const auto& op : task.ops) {
+        switch (op.type) {
 
-void Scheduler::add_task(Task t) {
-    task_queue.push_back(t);
-}
+        case OpType::KERNEL:
+            launch_kernel(op.kernel);
+            break;
 
-void Scheduler::execute() {
-    std::cout << "[Scheduler] Ejecutando " << task_queue.size() << " tareas...\n";
-    for(auto &t : task_queue) {
-        std::cout << "  Cluster " << t.cluster_id << ", Subarray " << t.subarray_id
-                  << ", Precision " << (t.fp16 ? "FP16" : "FP8") << "\n";
+        case OpType::BARRIER:
+            hw::issue_barrier();
+            break;
+
+        case OpType::DMA_SEND: {
+            uint32_t id = hw::dma_send(
+                op.local_ptr, op.dram_addr, op.size);
+            pending_dmas.push_back(id);
+            break;
+        }
+
+        case OpType::DMA_RECV: {
+            uint32_t id = hw::dma_recv(
+                op.dram_addr, op.local_ptr, op.size);
+            pending_dmas.push_back(id);
+            break;
+        }
+
+        case OpType::SYNC_DMA:
+            hw::sync_dma(op.dma_id);
+            break;
+        }
     }
-    task_queue.clear();
 }
 
