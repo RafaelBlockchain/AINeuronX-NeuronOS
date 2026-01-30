@@ -23,9 +23,16 @@ class Emulator:
 
         self.dma = DMAEngine()
 
+
     def step(self):
         self.clock.tick()
         cycle = self.clock.cycle
+
+        # Golden minimal event
+        self.logger.log({
+            "cycle": cycle,
+            "event": "tick"
+        })
 
         self.dma.step()
         self.noc.step(cycle)

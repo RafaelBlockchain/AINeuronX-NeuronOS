@@ -7,9 +7,13 @@ def compute_latency(trace):
     return commits[-1]["cycle"] - commits[0]["cycle"]
 
 def compute_ipc(trace):
-    cycles = max(e["cycle"] for e in trace)
-    commits = len([e for e in trace if e["event"] == "COMMIT"])
-    return commits / cycles if cycles > 0 else 0
+    if not trace:
+        return 0.0
+
+    cycles = max(e["cycle"] for e in trace) + 1
+    instructions = sum(1 for e in trace if e.get("event") == "instruction")
+
+    return instructions / cycles if cycles > 0 else 0.0
 
 def utilization(trace, prefix):
     active = len([e for e in trace if e["opcode"] and e["opcode"].startswith(prefix)])
