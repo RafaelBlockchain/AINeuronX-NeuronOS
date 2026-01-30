@@ -1,3 +1,4 @@
+cat << 'EOF' > emulator/logging/logger.py
 class EventLogger:
     def __init__(self):
         self.events = []
@@ -9,4 +10,4 @@ class EventLogger:
         import json
         with open(path, "w") as f:
             json.dump(self.events, f, indent=2)
-
+EOF
