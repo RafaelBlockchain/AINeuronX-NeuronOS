@@ -3,7 +3,12 @@ from emulator.core.instruction import Instruction
 
 def simple_program():
     """
-    Programa mínimo canónico para Golden Emulator.
-    Ejecuta una secuencia trivial sin dependencias externas.
+    Programa Golden mínimo con trabajo real.
     """
-    return []
+    return [
+        {"opcode": "VADD"},
+        {"opcode": "VADD"},
+        {"opcode": "VADD"},
+        {"opcode": "VADD"},
+    ]
+

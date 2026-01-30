@@ -10,9 +10,18 @@ class Tile:
         self.current = None
 
     def step(self, cycle):
-        # Golden Tile mínimo: avanza PC hasta terminar el programa
         if self.pc < len(self.program):
-            self.current = self.program[self.pc]
+            instr = self.program[self.pc]
+            self.current = instr
+
+            # Evento real (VADD)
+            self.logger.log({
+                "cycle": cycle,
+                "opcode": instr["opcode"],
+                "event": "COMMIT",
+            })
+
             self.pc += 1
         else:
             self.current = None
+
