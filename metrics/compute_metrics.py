@@ -19,8 +19,8 @@ def utilization(trace, prefix):
     if not trace:
         return 0.0
 
-    active = len(
-        e for e in trace
+    active = sum(
+        1 for e in trace
         if e.get("opcode") and e["opcode"].startswith(prefix)
     )
     return active / len(trace)
