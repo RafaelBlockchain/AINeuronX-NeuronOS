@@ -17,10 +17,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y python3 iverilog
 
-    - name: Debug workflow file
+    - name: Run Golden Emulator
       run: |
-        echo "WORKFLOW FILE LOADED CORRECTLY"
+        python3 emulator/run.py
+        ls -l emu_trace.json
 
     - name: Check N200 Performance Targets
       run: |
         python3 -m metrics.check_targets
+
