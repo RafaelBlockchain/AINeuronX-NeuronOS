@@ -39,7 +39,10 @@ class Emulator:
         ):
             self.state = GlobalState.DONE
 
+
     def run(self):
         while self.state == GlobalState.RUNNING and self.clock.cycle < self.max_cycle:
             self.step()
 
+        # Export Golden trace
+        self.logger.export("emu_trace.json")
