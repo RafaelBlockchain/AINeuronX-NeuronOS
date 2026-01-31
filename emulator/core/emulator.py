@@ -1,55 +1,29 @@
-from emulator.core.clock import Clock
-from emulator.core.state import GlobalState
-from emulator.noc.noc import NoC
-from emulator.memory.dma import DMAEngine
-from emulator.logging.logger import EventLogger
+from enum import Enum
+
+
+class GlobalState(Enum):
+    RUNNING = 0
+    DONE = 1
 
 
 class Emulator:
-    def __init__(self, tiles, max_cycle=1000, width=4, height=4, hop_latency=1):
-        self.logger = EventLogger()
-
-        self.clock = Clock()
+    def __init__(self, tiles, logger, max_cycles=1000):
         self.tiles = tiles
+        self.logger = logger
+        self.max_cycles = max_cycles
+
+        self.cycle = 0
         self.state = GlobalState.RUNNING
-        self.max_cycle = max_cycle
-
-        self.noc = NoC(
-            width=width,
-            height=height,
-            hop_latency=hop_latency,
-            logger=self.logger,
-        )
-
-        self.dma = DMAEngine()
-
 
     def step(self):
-        self.clock.tick()
-        cycle = self.clock.cycle
-
-        self.logger.log({
-            "cycle": cycle,
-            "opcode": "NOP",
-            "event": "COMMIT"
-        })
-
-        self.dma.step()
-        self.noc.step(cycle)
-
         for tile in self.tiles:
-            tile.step(cycle)
+            tile.step(self.cycle)
 
-        if all(
-            tile.pc >= len(tile.program) and tile.current is None
-            for tile in self.tiles
-        ):
+        self.cycle += 1
+
+        if all(tile.current is None for tile in self.tiles):
             self.state = GlobalState.DONE
 
-
     def run(self):
-        while self.state == GlobalState.RUNNING and self.clock.cycle < self.max_cycle:
+        while self.state == GlobalState.RUNNING and self.cycle < self.max_cycles:
             self.step()
-
-        # Export Golden trace
-        self.logger.export("emu_trace.json")

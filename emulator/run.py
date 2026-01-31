@@ -6,19 +6,14 @@ from emulator.memory.dma import DMAEngine
 
 
 def main():
-    # Logger global (golden trace)
     logger = EventLogger()
-
-    # DMA engine (stub válido para N200)
     dma = DMAEngine()
 
-    # Programa golden REAL (VADD)
     program = simple_program()
 
-    # Tiles
     tiles = []
-    ssb = None          # placeholder N200
-    num_tiles = 1       # N200 = 1 tile
+    ssb = None
+    num_tiles = 1
 
     for i in range(num_tiles):
         tiles.append(
@@ -31,13 +26,9 @@ def main():
             )
         )
 
-    # Emulator
     emu = Emulator(tiles=tiles, logger=logger)
-
-    # Ejecutar
     emu.run()
 
-    # Guardar traza golden
     logger.dump("emu_trace.json")
 
 

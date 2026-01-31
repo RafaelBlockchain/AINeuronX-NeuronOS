@@ -14,7 +14,6 @@ class Tile:
             instr = self.program[self.pc]
             self.current = instr
 
-            # Evento real (VADD)
             self.logger.log({
                 "cycle": cycle,
                 "opcode": instr["opcode"],
