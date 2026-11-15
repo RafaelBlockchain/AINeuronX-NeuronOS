@@ -1,5 +1,4 @@
 name: Golden Check N200
-
 on:
   push:
     branches: [ main ]
