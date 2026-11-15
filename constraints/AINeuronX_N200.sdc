@@ -1,5 +1,5 @@
 set_units -time ns -capacitance pF -current mA
-
+  
 create_clock -name clk -period 1.0 [get_ports clk]   ;# 1 GHz target
 set_clock_uncertainty 0.05 [get_clocks clk]
 
