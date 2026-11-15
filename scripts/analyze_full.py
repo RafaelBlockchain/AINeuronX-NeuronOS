@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-
+  
 # Archivo de log del testbench
 log_file = "tb_aineuronx_full.log"
 
