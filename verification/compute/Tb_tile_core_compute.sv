@@ -2,7 +2,7 @@
 `timescale 1ns/1ps
 
 module tb_tile_core_compute;
-
+  
     localparam int DATA_WIDTH = 16;
     localparam int ACC_WIDTH  = 32;
     localparam int LANES      = 4;
