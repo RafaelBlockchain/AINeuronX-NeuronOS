@@ -1,6 +1,6 @@
 create_power_domain PD_CLUSTER_0 -elements {cluster0/*}
 create_power_domain PD_CLUSTER_1 -elements {cluster1/*}
-
+  
 create_supply_port VDD
 create_supply_port VSS
 
