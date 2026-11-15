@@ -1,12 +1,12 @@
-      - name: Run RTL Compute Verification
-        run: |
-          iverilog -g2012 -Wall -o sim_compute \
-            verification/compute/tb_tile_core_compute.sv \
-            src/core_compute/Tile_Core_Compute.sv \
-            src/core_compute/vector/vector_unit.sv \
-            src/core_compute/tensor/systolic_ctrl.sv \
-            src/core_compute/tensor/systolic_buffer.sv \
-            src/core_compute/tensor/systolic_array.sv \
-            src/core_compute/tensor/systolic_pe.sv
-          vvp sim_compute
+- name: Run RTL Compute Verification
+  run: |
+    iverilog -g2012 -Wall -o sim_compute \
+      verification/compute/tb_tile_core_compute.sv \
+      src/core_compute/Tile_Core_Compute.sv \.                              
+      src/core_compute/vector/vector_unit.sv \
+      src/core_compute/tensor/systolic_ctrl.sv \
+      src/core_compute/tensor/systolic_buffer.sv \
+      src/core_compute/tensor/systolic_array.sv \
+      src/core_compute/tensor/systolic_pe.sv
+    vvp sim_compute
           
