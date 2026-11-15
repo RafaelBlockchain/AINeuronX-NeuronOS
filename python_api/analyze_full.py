@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # analyze_full.py — Procesa logs, calcula TFLOPS, latencia, consumo, genera heatmaps y reportes CSV/PDF
-
+  
 import re
 import numpy as np
 import matplotlib.pyplot as plt
