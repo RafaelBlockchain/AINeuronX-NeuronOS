@@ -1,79 +1,149 @@
+
 `timescale 1ns/1ps
 
 module systolic_ctrl #(
-    parameter int ROWS = 4,
-    parameter int COLS = 4,
-    parameter int K_DIM = 16
-)(
+    parameter int ROWS  = 2,
+    parameter int COLS  = 2,
+    parameter int K_DIM = 2
+) (
     input  logic clk,
     input  logic rst_n,
 
-    // Command interface
+    // Command
     input  logic start,
+
+    // Control outputs
+    output logic clear_acc,
+    output logic feed_enable,
     output logic busy,
     output logic done,
 
-    // Control to systolic array
-    output logic valid_in,
-    output logic clear_acc
+    // Timing information
+    output logic [31:0] cycle_count
 );
 
-    typedef enum logic [1:0] {
+    // Total number of feed cycles:
+    // K_DIM + ROWS + COLS - 2
+    localparam int FEED_CYCLES =
+        K_DIM + ROWS + COLS - 2;
+
+    typedef enum logic [2:0] {
         IDLE,
         CLEAR,
-        RUN,
+        FEED,
+        DRAIN,
         FINISH
     } state_t;
 
-    state_t state, state_n;
+    state_t state;
 
-    logic [$clog2(K_DIM+1)-1:0] k_cnt;
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state <= IDLE;
-            k_cnt <= '0;
-        end else begin
-            state <= state_n;
-            if (state == RUN)
-                k_cnt <= k_cnt + 1'b1;
-            else
-                k_cnt <= '0;
-        end
-    end
+    logic [31:0] feed_count;
 
     always_comb begin
-        state_n   = state;
-        valid_in = 1'b0;
-        clear_acc= 1'b0;
-        busy     = 1'b0;
-        done     = 1'b0;
+        clear_acc  = 1'b0;
+        feed_enable = 1'b0;
+        busy        = 1'b0;
+        done        = 1'b0;
 
         case (state)
+
             IDLE: begin
-                if (start)
-                    state_n = CLEAR;
+                busy = 1'b0;
             end
 
             CLEAR: begin
                 clear_acc = 1'b1;
                 busy      = 1'b1;
-                state_n   = RUN;
             end
 
-            RUN: begin
-                valid_in = 1'b1;
-                busy     = 1'b1;
-                if (k_cnt == K_DIM-1)
-                    state_n = FINISH;
+            FEED: begin
+                feed_enable = 1'b1;
+                busy        = 1'b1;
+            end
+
+            DRAIN: begin
+                busy = 1'b1;
             end
 
             FINISH: begin
-                done   = 1'b1;
-                busy   = 1'b0;
-                state_n = IDLE;
+                done = 1'b1;
             end
+
+            default: begin
+                busy = 1'b0;
+            end
+
         endcase
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+
+        if (!rst_n) begin
+            state       <= IDLE;
+            feed_count  <= '0;
+            cycle_count <= '0;
+
+        end else begin
+
+            case (state)
+
+                IDLE: begin
+                    feed_count  <= '0;
+                    cycle_count <= '0;
+
+                    if (start) begin
+                        state <= CLEAR;
+                    end
+                end
+
+                CLEAR: begin
+                    feed_count  <= '0;
+                    cycle_count <= '0;
+                    state       <= FEED;
+                end
+
+                FEED: begin
+
+                    cycle_count <= cycle_count + 1'b1;
+
+                    if (feed_count == FEED_CYCLES - 1) begin
+                        state <= DRAIN;
+                    end else begin
+                        feed_count <= feed_count + 1'b1;
+                    end
+
+                end
+
+                DRAIN: begin
+                    state <= FINISH;
+                end
+
+                FINISH: begin
+                    state <= IDLE;
+                end
+
+                default: begin
+                    state       <= IDLE;
+                    feed_count  <= '0;
+                    cycle_count <= '0;
+                end
+
+            endcase
+        end
+    end
+
+    // Parameter validation
+    initial begin
+
+        if (ROWS < 1)
+            $fatal(1, "ROWS must be >= 1");
+
+        if (COLS < 1)
+            $fatal(1, "COLS must be >= 1");
+
+        if (K_DIM < 1)
+            $fatal(1, "K_DIM must be >= 1");
+
     end
 
 endmodule
