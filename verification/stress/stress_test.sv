@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 module stress_test;
-
+  
     logic clk;
     integer i;
 
