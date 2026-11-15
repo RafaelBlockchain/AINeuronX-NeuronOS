@@ -1,5 +1,5 @@
 from isa_n200 import ISA
-
+  
 def emit(op):
     if op.opcode == ISA.TMATMUL:
         return f"TMATMUL {op.args}"
