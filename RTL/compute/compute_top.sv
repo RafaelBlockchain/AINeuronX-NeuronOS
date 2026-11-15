@@ -1,7 +1,7 @@
 module compute_top (
     input logic clk,
     input logic rst_n,
-
+   
     input  logic        op_valid,
     output logic        op_ready,
     input  logic [3:0]  op_opcode,
