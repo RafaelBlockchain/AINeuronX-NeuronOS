@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "▸ Cleaning previous build..."
 rm -rf obj_dir
-
+   
 echo "► Verilating RTL + TB..."
 verilator -Wall --timing --cc --exe --build \
     src/AINeuronX_N200_CORE.SV \
