@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+  
 verilator --cc --exe --build \
   -Isrc/common \
   -Isrc/noc \
