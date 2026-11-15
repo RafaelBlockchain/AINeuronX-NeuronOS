@@ -11,7 +11,7 @@ module bist_controller #(
 );
 
     logic running;
-
+   
     always_ff @(posedge clk) begin
         if (start) begin
             running <= 1'b1;
