@@ -1,5 +1,5 @@
 # AINeuronX
-
+  
 Proyecto de acelerador de IA de alto rendimiento con soporte FP16 y FP8, escalable a clusters masivos.
 
 Incluye:
