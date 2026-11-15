@@ -1,144 +1,160 @@
-`timescale 1ns/1ps
 
 module Tile_Core_Compute #(
     parameter int DATA_WIDTH = 16,
     parameter int ACC_WIDTH  = 32,
-    parameter int ROWS = 4,
-    parameter int COLS = 4,
-    parameter int K_DIM = 16,
-    parameter int LANES = 4
-)(
-    input  logic clk,
-    input  logic rst_n,
+    parameter int LANES      = 4,
+    parameter int ROWS       = 2,
+    parameter int COLS       = 2,
+    parameter int K_DIM      = 2
+) (
+    input logic clk,
+    input logic rst_n,
 
-    // Command interface
-    input  logic        cmd_valid,
-    input  logic [1:0]  cmd_type,     // 01: tensor, 10: vector
-    input  logic        cmd_start,
+    // -------------------------
+    // Vector unit interface
+    // -------------------------
+    input logic vector_start,
+    input logic [1:0] vector_opcode,
+    input logic vector_clear_acc,
 
-    output logic        busy,
-    output logic        done,
+    input logic [LANES*DATA_WIDTH-1:0] vector_a,
+    input logic [LANES*DATA_WIDTH-1:0] vector_b,
 
-    // ===================== Tensor interfaces =====================
-    input  logic        tensor_load,
-    input  logic        tensor_start,
+    output logic [LANES*ACC_WIDTH-1:0] vector_result,
+    output logic vector_busy,
+    output logic vector_done,
 
-    input  logic signed [DATA_WIDTH-1:0] tensor_a [ROWS-1:0][K_DIM-1:0],
-    input  logic signed [DATA_WIDTH-1:0] tensor_b [K_DIM-1:0][COLS-1:0],
+    // -------------------------
+    // Tensor unit interface
+    // -------------------------
+    input logic tensor_load,
+    input logic tensor_start,
 
-    output logic signed [ACC_WIDTH-1:0]  tensor_out [ROWS-1:0][COLS-1:0],
+    input logic [ROWS*K_DIM*DATA_WIDTH-1:0] matrix_a,
+    input logic [K_DIM*COLS*DATA_WIDTH-1:0] matrix_b,
 
-    // ===================== Vector interfaces =====================
-    input  logic        vector_start,
-    input  logic [1:0]  vector_op,     // 00 ADD, 01 MUL, 10 MAC
+    output logic [ROWS*COLS*ACC_WIDTH-1:0]
+        tensor_accumulators,
 
-    input  logic signed [DATA_WIDTH-1:0] vector_a   [LANES-1:0],
-    input  logic signed [DATA_WIDTH-1:0] vector_b   [LANES-1:0],
-    input  logic signed [DATA_WIDTH-1:0] vector_acc [LANES-1:0],
+    output logic [ROWS*COLS-1:0]
+        tensor_valid,
 
-    output logic signed [DATA_WIDTH-1:0] vector_out [LANES-1:0]
+    output logic tensor_busy,
+    output logic tensor_done
 );
 
-    // ============================================================
-    // Tensor path
-    // ============================================================
-    logic tensor_valid;
-    logic tensor_clear;
-    logic tensor_done;
+    // -------------------------
+    // Tensor control signals
+    // -------------------------
+    logic clear_acc;
+    logic feed_enable;
+    logic [31:0] cycle_count;
 
-    logic signed [DATA_WIDTH-1:0] a_bus [ROWS-1:0];
-    logic signed [DATA_WIDTH-1:0] b_bus [COLS-1:0];
+    // -------------------------
+    // Systolic buffer signals
+    // -------------------------
+    logic [ROWS*DATA_WIDTH-1:0] a_feed;
+    logic [ROWS-1:0] valid_a;
 
-    systolic_ctrl #(
-        .ROWS (ROWS),
-        .COLS (COLS),
-        .K_DIM(K_DIM)
-    ) u_tensor_ctrl (
-        .clk       (clk),
-        .rst_n     (rst_n),
-        .start     (tensor_start),
-        .busy      (),
-        .done      (tensor_done),
-        .valid_in  (tensor_valid),
-        .clear_acc (tensor_clear)
+    logic [COLS*DATA_WIDTH-1:0] b_feed;
+    logic [COLS-1:0] valid_b;
+
+    // Prevent loading matrices while tensor execution is active.
+    logic buffer_load;
+
+    assign buffer_load = tensor_load && !tensor_busy;
+
+    // -------------------------
+    // Vector unit
+    // -------------------------
+    vector_unit #(
+        .LANES(LANES),
+        .DATA_WIDTH(DATA_WIDTH),
+        .ACC_WIDTH(ACC_WIDTH)
+    ) u_vector_unit (
+        .clk(clk),
+        .rst_n(rst_n),
+        .start(vector_start),
+        .opcode(vector_opcode),
+        .clear_acc(vector_clear_acc),
+        .vector_a(vector_a),
+        .vector_b(vector_b),
+        .result(vector_result),
+        .busy(vector_busy),
+        .done(vector_done)
     );
 
+    // -------------------------
+    // Tensor controller
+    // -------------------------
+    systolic_ctrl #(
+        .ROWS(ROWS),
+        .COLS(COLS),
+        .K_DIM(K_DIM)
+    ) u_systolic_ctrl (
+        .clk(clk),
+        .rst_n(rst_n),
+        .start(tensor_start),
+        .clear_acc(clear_acc),
+        .feed_enable(feed_enable),
+        .busy(tensor_busy),
+        .done(tensor_done),
+        .cycle_count(cycle_count)
+    );
+
+    // -------------------------
+    // Matrix input buffer
+    // -------------------------
     systolic_buffer #(
         .DATA_WIDTH(DATA_WIDTH),
-        .ROWS      (ROWS),
-        .COLS      (COLS),
-        .K_DIM     (K_DIM)
-    ) u_tensor_buf (
-        .clk    (clk),
-        .rst_n  (rst_n),
-        .load   (tensor_load),
-        .shift  (tensor_valid),
-        .a_load (tensor_a),
-        .b_load (tensor_b),
-        .a_out  (a_bus),
-        .b_out  (b_bus)
+        .ROWS(ROWS),
+        .COLS(COLS),
+        .K_DIM(K_DIM)
+    ) u_systolic_buffer (
+        .clk(clk),
+        .rst_n(rst_n),
+        .load(buffer_load),
+        .feed_enable(feed_enable),
+        .matrix_a(matrix_a),
+        .matrix_b(matrix_b),
+        .cycle_count(cycle_count),
+        .a_feed(a_feed),
+        .valid_a(valid_a),
+        .b_feed(b_feed),
+        .valid_b(valid_b)
     );
 
+    // -------------------------
+    // Systolic processing array
+    // -------------------------
     systolic_array #(
         .DATA_WIDTH(DATA_WIDTH),
-        .ACC_WIDTH (ACC_WIDTH),
-        .ROWS      (ROWS),
-        .COLS      (COLS)
-    ) u_tensor_array (
-        .clk       (clk),
-        .rst_n     (rst_n),
-        .valid_in  (tensor_valid),
-        .clear_acc (tensor_clear),
-        .a_in      (a_bus),
-        .b_in      (b_bus),
-        .acc_out   (tensor_out),
-        .valid_out ()
+        .ACC_WIDTH(ACC_WIDTH),
+        .ROWS(ROWS),
+        .COLS(COLS)
+    ) u_systolic_array (
+        .clk(clk),
+        .rst_n(rst_n),
+        .clear_acc(clear_acc),
+        .a_feed(a_feed),
+        .valid_a(valid_a),
+        .b_feed(b_feed),
+        .valid_b(valid_b),
+        .accumulators(tensor_accumulators),
+        .valid_out(tensor_valid)
     );
 
-    // ============================================================
-    // Vector path (v2)
-    // ============================================================
-    logic vector_busy;
-    logic vector_done;
-
-    vector_unit #(
-        .DATA_WIDTH(DATA_WIDTH),
-        .LANES     (LANES)
-    ) u_vector (
-        .clk     (clk),
-        .rst_n   (rst_n),
-        .start   (vector_start),
-        .op      (vector_op),
-        .busy    (vector_busy),
-        .done    (vector_done),
-        .vec_a   (vector_a),
-        .vec_b   (vector_b),
-        .vec_acc (vector_acc),
-        .vec_out (vector_out)
-    );
-
-    // ============================================================
-    // Arbitration / Status
-    // ============================================================
-    always_comb begin
-        busy = 1'b0;
-        done = 1'b0;
-
-        if (cmd_valid) begin
-            case (cmd_type)
-                2'b01: begin // tensor
-                    busy = ~tensor_done;
-                    done = tensor_done;
-                end
-                2'b10: begin // vector
-                    busy = vector_busy;
-                    done = vector_done;
-                end
-                default: begin
-                    busy = 1'b0;
-                    done = 1'b0;
-                end
-            endcase
+    // -------------------------
+    // Parameter validation
+    // -------------------------
+    initial begin
+        if (DATA_WIDTH < 1 ||
+            ACC_WIDTH < 2*DATA_WIDTH ||
+            LANES < 1 ||
+            ROWS < 1 ||
+            COLS < 1 ||
+            K_DIM < 1) begin
+            $fatal(1, "Invalid Tile_Core_Compute parameters");
         end
     end
 
