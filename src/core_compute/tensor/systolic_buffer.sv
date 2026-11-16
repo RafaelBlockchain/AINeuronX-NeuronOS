@@ -26,35 +26,59 @@ module systolic_buffer #(
     logic signed [DATA_WIDTH-1:0] a_mem [0:ROWS-1][0:K_DIM-1];
     logic signed [DATA_WIDTH-1:0] b_mem [0:K_DIM-1][0:COLS-1];
 
-    always_comb begin
-        int a_k;
-        int b_k;
+    logic [ROWS*DATA_WIDTH-1:0] a_feed_next;
+    logic [ROWS-1:0]            valid_a_next;
+    logic [COLS*DATA_WIDTH-1:0] b_feed_next;
+    logic [COLS-1:0]            valid_b_next;
 
-        a_k     = 0;
-        b_k     = 0;
-        a_feed  = '0;
-        b_feed  = '0;
-        valid_a = '0;
-        valid_b = '0;
+    // Truncamiento seguro a 10 bits para evitar restadores y comparadores de 32 bits
+    logic signed [9:0] cycle_short;
+    assign cycle_short = $signed(cycle_count[9:0]);
+
+    always_comb begin
+        logic signed [9:0] a_k;
+        logic signed [9:0] b_k;
+
+        a_k          = '0;
+        b_k          = '0;
+        a_feed_next  = '0;
+        b_feed_next  = '0;
+        valid_a_next = '0;
+        valid_b_next = '0;
 
         if (feed_enable) begin
-            // A: skew por fila.
+            // A: skew por fila
             for (int r = 0; r < ROWS; r++) begin
-                a_k = $signed(cycle_count) - r;
-                if ((a_k >= 0) && (a_k < K_DIM)) begin
-                    a_feed[r*DATA_WIDTH +: DATA_WIDTH] = a_mem[r][a_k];
-                    valid_a[r] = 1'b1;
+                a_k = cycle_short - 10'(r);
+                if ((a_k >= 10'sd0) && (a_k < 10'(K_DIM))) begin
+                    a_feed_next[r*DATA_WIDTH +: DATA_WIDTH] = a_mem[r][a_k];
+                    valid_a_next[r] = 1'b1;
                 end
             end
 
-            // B: skew por columna.
+            // B: skew por columna
             for (int c = 0; c < COLS; c++) begin
-                b_k = $signed(cycle_count) - c;
-                if ((b_k >= 0) && (b_k < K_DIM)) begin
-                    b_feed[c*DATA_WIDTH +: DATA_WIDTH] = b_mem[b_k][c];
-                    valid_b[c] = 1'b1;
+                b_k = cycle_short - 10'(c);
+                if ((b_k >= 10'sd0) && (b_k < 10'(K_DIM))) begin
+                    b_feed_next[c*DATA_WIDTH +: DATA_WIDTH] = b_mem[b_k][c];
+                    valid_b_next[c] = 1'b1;
                 end
             end
+        end
+    end
+
+    // Registro de salida para aislar lectura de matriz vs multiplicador PE (150 MHz)
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            a_feed  <= '0;
+            valid_a <= '0;
+            b_feed  <= '0;
+            valid_b <= '0;
+        end else begin
+            a_feed  <= a_feed_next;
+            valid_a <= valid_a_next;
+            b_feed  <= b_feed_next;
+            valid_b <= valid_b_next;
         end
     end
 
@@ -96,7 +120,10 @@ module systolic_buffer #(
         if (DATA_WIDTH < 1 ||
             ROWS < 1 ||
             COLS < 1 ||
-            K_DIM < 1) begin
+            K_DIM < 1 ||
+            ROWS > 256 ||
+            COLS > 256 ||
+            K_DIM > 256) begin
             $fatal(1, "Invalid systolic_buffer parameters");
         end
     end
