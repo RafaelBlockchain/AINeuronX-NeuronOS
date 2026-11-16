@@ -1,0 +1,30 @@
+name: Build GDSII - IHP SG13G2 (130nm)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'openlane/**'
+
+jobs:
+  hardening-sg13g2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run LibreLane RTL-to-GDSII (ihp-sg13g2)
+        uses: fossi-foundation/librelane-action@v0.1
+        with:
+          arguments: --pdk ihp-sg13g2 --run-tag n200_150mhz openlane/config.json
+
+      - name: Upload GDSII and Signoff Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: N200_Top-ihp-sg13g2-GDS
+          path: |
+            openlane/runs/n200_150mhz/final/
+            openlane/runs/n200_150mhz/logs/
+            
