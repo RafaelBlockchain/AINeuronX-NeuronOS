@@ -37,7 +37,7 @@ module systolic_ctrl #(
     state_t state;
 
     logic [31:0] feed_count;
-    logic        drain_cnt; // 2 ciclos de drenaje para el pipeline de 2 etapas del PE
+    logic [1:0]  drain_cnt; // 3 ciclos de drenaje (1 ciclo buffer + 2 etapas del PE)
 
     always_comb begin
         clear_acc   = 1'b0;
@@ -82,7 +82,7 @@ module systolic_ctrl #(
             state       <= IDLE;
             feed_count  <= '0;
             cycle_count <= '0;
-            drain_cnt   <= 1'b0;
+            drain_cnt   <= 2'd0;
 
         end else begin
 
@@ -91,7 +91,7 @@ module systolic_ctrl #(
                 IDLE: begin
                     feed_count  <= '0;
                     cycle_count <= '0;
-                    drain_cnt   <= 1'b0;
+                    drain_cnt   <= 2'd0;
 
                     if (start) begin
                         state <= CLEAR;
@@ -101,7 +101,7 @@ module systolic_ctrl #(
                 CLEAR: begin
                     feed_count  <= '0;
                     cycle_count <= '0;
-                    drain_cnt   <= 1'b0;
+                    drain_cnt   <= 2'd0;
                     state       <= FEED;
                 end
 
@@ -110,7 +110,7 @@ module systolic_ctrl #(
                     cycle_count <= cycle_count + 1'b1;
 
                     if (feed_count == FEED_CYCLES - 1) begin
-                        drain_cnt <= 1'b0;
+                        drain_cnt <= 2'd0;
                         state     <= DRAIN;
                     end else begin
                         feed_count <= feed_count + 1'b1;
@@ -119,10 +119,10 @@ module systolic_ctrl #(
                 end
 
                 DRAIN: begin
-                    if (drain_cnt == 1'b1) begin
+                    if (drain_cnt == 2'd2) begin
                         state <= FINISH;
                     end else begin
-                        drain_cnt <= 1'b1;
+                        drain_cnt <= drain_cnt + 2'd1;
                     end
                 end
 
@@ -134,7 +134,7 @@ module systolic_ctrl #(
                     state       <= IDLE;
                     feed_count  <= '0;
                     cycle_count <= '0;
-                    drain_cnt   <= 1'b0;
+                    drain_cnt   <= 2'd0;
                 end
 
             endcase
