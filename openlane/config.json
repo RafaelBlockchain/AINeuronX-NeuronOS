@@ -1,6 +1,6 @@
 {
     "DESIGN_NAME": "N200_Top",
-    "VERILOG_FILES": [
+    "VERILOG_FILES": [  
         "dir::../src/core_compute/N200_Top.sv",
         "dir::../src/core_compute/Tile_Core_Compute.sv",
         "dir::../src/core_compute/vector/vector_unit.sv",
