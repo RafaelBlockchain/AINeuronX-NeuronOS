@@ -33,5 +33,6 @@ jobs:
           name: N200_Top-ihp-sg13g2-GDS
           path: |
             openlane/runs/n200_150mhz/final/
+            openlane/runs/n200_150mhz/54-klayout-streamout/
             openlane/runs/n200_150mhz/logs/
             
