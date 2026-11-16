@@ -1,4 +1,3 @@
-
 `timescale 1ns/1ps
 
 module systolic_ctrl #(
@@ -38,9 +37,10 @@ module systolic_ctrl #(
     state_t state;
 
     logic [31:0] feed_count;
+    logic        drain_cnt; // 2 ciclos de drenaje para el pipeline de 2 etapas del PE
 
     always_comb begin
-        clear_acc  = 1'b0;
+        clear_acc   = 1'b0;
         feed_enable = 1'b0;
         busy        = 1'b0;
         done        = 1'b0;
@@ -82,6 +82,7 @@ module systolic_ctrl #(
             state       <= IDLE;
             feed_count  <= '0;
             cycle_count <= '0;
+            drain_cnt   <= 1'b0;
 
         end else begin
 
@@ -90,6 +91,7 @@ module systolic_ctrl #(
                 IDLE: begin
                     feed_count  <= '0;
                     cycle_count <= '0;
+                    drain_cnt   <= 1'b0;
 
                     if (start) begin
                         state <= CLEAR;
@@ -99,6 +101,7 @@ module systolic_ctrl #(
                 CLEAR: begin
                     feed_count  <= '0;
                     cycle_count <= '0;
+                    drain_cnt   <= 1'b0;
                     state       <= FEED;
                 end
 
@@ -107,7 +110,8 @@ module systolic_ctrl #(
                     cycle_count <= cycle_count + 1'b1;
 
                     if (feed_count == FEED_CYCLES - 1) begin
-                        state <= DRAIN;
+                        drain_cnt <= 1'b0;
+                        state     <= DRAIN;
                     end else begin
                         feed_count <= feed_count + 1'b1;
                     end
@@ -115,7 +119,11 @@ module systolic_ctrl #(
                 end
 
                 DRAIN: begin
-                    state <= FINISH;
+                    if (drain_cnt == 1'b1) begin
+                        state <= FINISH;
+                    end else begin
+                        drain_cnt <= 1'b1;
+                    end
                 end
 
                 FINISH: begin
@@ -126,13 +134,14 @@ module systolic_ctrl #(
                     state       <= IDLE;
                     feed_count  <= '0;
                     cycle_count <= '0;
+                    drain_cnt   <= 1'b0;
                 end
 
             endcase
         end
     end
 
-    // Parameter validation
+`ifndef SYNTHESIS
     initial begin
 
         if (ROWS < 1)
@@ -145,5 +154,6 @@ module systolic_ctrl #(
             $fatal(1, "K_DIM must be >= 1");
 
     end
+`endif
 
 endmodule
