@@ -32,10 +32,11 @@ module vector_unit #(
 
     localparam int PRODUCT_WIDTH = 2 * DATA_WIDTH;
 
-    // Internal control
-    typedef enum logic {
-        IDLE,
-        EXECUTE
+    // Pipeline FSM states (150 MHz timing closure)
+    typedef enum logic [1:0] {
+        IDLE       = 2'b00,
+        MULTIPLY   = 2'b01,
+        ACCUMULATE = 2'b10
     } state_t;
 
     state_t state;
@@ -45,38 +46,42 @@ module vector_unit #(
     logic [LANES*DATA_WIDTH-1:0] vector_a_reg;
     logic [LANES*DATA_WIDTH-1:0] vector_b_reg;
 
-    // Per-lane arithmetic signals
-    logic signed [DATA_WIDTH-1:0] a_lane [0:LANES-1];
-    logic signed [DATA_WIDTH-1:0] b_lane [0:LANES-1];
+    // Stage 1 combinational signals
+    logic signed [DATA_WIDTH-1:0]    a_lane       [0:LANES-1];
+    logic signed [DATA_WIDTH-1:0]    b_lane       [0:LANES-1];
+    logic signed [PRODUCT_WIDTH-1:0] product_comb [0:LANES-1];
 
-    logic signed [PRODUCT_WIDTH-1:0] product_lane [0:LANES-1];
+    // Stage 1 -> Stage 2 pipeline registers
+    logic signed [PRODUCT_WIDTH-1:0] product_reg  [0:LANES-1];
 
-    logic signed [ACC_WIDTH-1:0] a_ext [0:LANES-1];
-    logic signed [ACC_WIDTH-1:0] b_ext [0:LANES-1];
+    // Stage 2 combinational signals
+    logic signed [ACC_WIDTH-1:0] a_ext       [0:LANES-1];
+    logic signed [ACC_WIDTH-1:0] b_ext       [0:LANES-1];
     logic signed [ACC_WIDTH-1:0] product_ext [0:LANES-1];
-
     logic signed [ACC_WIDTH-1:0] accumulator [0:LANES-1];
     logic signed [ACC_WIDTH-1:0] result_calc [0:LANES-1];
 
     logic [LANES*ACC_WIDTH-1:0] result_reg;
 
-    // --------------------------------------------------
-    // Lane arithmetic
-    // --------------------------------------------------
+    assign result = result_reg;
+    assign busy   = (state != IDLE);
 
+    // --------------------------------------------------
+    // Stage 1: Signed multiplication combinational logic
+    // --------------------------------------------------
     always_comb begin
         for (int i = 0; i < LANES; i++) begin
+            a_lane[i]       = $signed(vector_a_reg[i*DATA_WIDTH +: DATA_WIDTH]);
+            b_lane[i]       = $signed(vector_b_reg[i*DATA_WIDTH +: DATA_WIDTH]);
+            product_comb[i] = a_lane[i] * b_lane[i];
+        end
+    end
 
-            // Extract signed operands
-            a_lane[i] = $signed(
-                vector_a_reg[i*DATA_WIDTH +: DATA_WIDTH]
-            );
-
-            b_lane[i] = $signed(
-                vector_b_reg[i*DATA_WIDTH +: DATA_WIDTH]
-            );
-
-            // Sign extension
+    // --------------------------------------------------
+    // Stage 2: Sign extension & addition/accumulation
+    // --------------------------------------------------
+    always_comb begin
+        for (int i = 0; i < LANES; i++) begin
             a_ext[i] = {
                 {(ACC_WIDTH-DATA_WIDTH){a_lane[i][DATA_WIDTH-1]}},
                 a_lane[i]
@@ -87,137 +92,82 @@ module vector_unit #(
                 b_lane[i]
             };
 
-            // Full signed multiplication
-            product_lane[i] = a_lane[i] * b_lane[i];
-
-            // Extend product to accumulator width
             product_ext[i] = {
-                {(ACC_WIDTH-PRODUCT_WIDTH){
-                    product_lane[i][PRODUCT_WIDTH-1]
-                }},
-                product_lane[i]
+                {(ACC_WIDTH-PRODUCT_WIDTH){product_reg[i][PRODUCT_WIDTH-1]}},
+                product_reg[i]
             };
 
-            // Default result
-            result_calc[i] = '0;
-
             case (opcode_reg)
-
-                OP_ADD: begin
-                    result_calc[i] = a_ext[i] + b_ext[i];
-                end
-
-                OP_MUL: begin
-                    result_calc[i] = product_ext[i];
-                end
-
-                OP_MAC: begin
-                    result_calc[i] =
-                        accumulator[i] + product_ext[i];
-                end
-
-                default: begin
-                    result_calc[i] = '0;
-                end
-
+                OP_ADD:  result_calc[i] = a_ext[i] + b_ext[i];
+                OP_MUL:  result_calc[i] = product_ext[i];
+                OP_MAC:  result_calc[i] = accumulator[i] + product_ext[i];
+                default: result_calc[i] = '0;
             endcase
         end
     end
 
     // --------------------------------------------------
-    // Sequential execution control
+    // Sequential pipeline control
     // --------------------------------------------------
-
     always_ff @(posedge clk or negedge rst_n) begin
-
         if (!rst_n) begin
-            state          <= IDLE;
-            opcode_reg     <= OP_ADD;
-            vector_a_reg   <= '0;
-            vector_b_reg   <= '0;
-            result_reg     <= '0;
-            done           <= 1'b0;
+            state        <= IDLE;
+            opcode_reg   <= OP_ADD;
+            vector_a_reg <= '0;
+            vector_b_reg <= '0;
+            result_reg   <= '0;
+            done         <= 1'b0;
 
             for (int i = 0; i < LANES; i++) begin
+                product_reg[i] <= '0;
                 accumulator[i] <= '0;
             end
-
         end else begin
-
-            // Default: done is a one-cycle pulse
             done <= 1'b0;
 
             case (state)
-
                 IDLE: begin
-
                     if (clear_acc) begin
                         for (int i = 0; i < LANES; i++) begin
                             accumulator[i] <= '0;
                         end
                     end else if (start) begin
-
-                        // Capture command and operands
                         opcode_reg   <= opcode;
                         vector_a_reg <= vector_a;
                         vector_b_reg <= vector_b;
-
-                        state <= EXECUTE;
+                        state        <= MULTIPLY;
                     end
-
                 end
 
-                EXECUTE: begin
-
-                    // Publish one result per lane
+                MULTIPLY: begin
                     for (int i = 0; i < LANES; i++) begin
+                        product_reg[i] <= product_comb[i];
+                    end
+                    state <= ACCUMULATE;
+                end
 
-                        result_reg[i*ACC_WIDTH +: ACC_WIDTH]
-                            <= result_calc[i];
-
-                        // MAC updates the lane accumulator
+                ACCUMULATE: begin
+                    for (int i = 0; i < LANES; i++) begin
+                        result_reg[i*ACC_WIDTH +: ACC_WIDTH] <= result_calc[i];
                         if (opcode_reg == OP_MAC) begin
                             accumulator[i] <= result_calc[i];
                         end
-
                     end
-
                     done  <= 1'b1;
                     state <= IDLE;
-
                 end
 
-                default: begin
-                    state <= IDLE;
-                end
-
+                default: state <= IDLE;
             endcase
         end
     end
 
-    // --------------------------------------------------
-    // Outputs
-    // --------------------------------------------------
-
-    assign result = result_reg;
-    assign busy   = (state == EXECUTE);
-
-    // --------------------------------------------------
-    // Parameter validation
-    // --------------------------------------------------
-
+`ifndef SYNTHESIS
     initial begin
-
-        if (LANES < 1)
-            $fatal(1, "LANES must be >= 1");
-
-        if (DATA_WIDTH < 1)
-            $fatal(1, "DATA_WIDTH must be >= 1");
-
-        if (ACC_WIDTH < PRODUCT_WIDTH)
-            $fatal(1, "ACC_WIDTH must be >= 2*DATA_WIDTH");
-
+        if (LANES < 1 || DATA_WIDTH < 1 || ACC_WIDTH < PRODUCT_WIDTH) begin
+            $fatal(1, "Invalid vector_unit parameters");
+        end
     end
+`endif
 
 endmodule
-
