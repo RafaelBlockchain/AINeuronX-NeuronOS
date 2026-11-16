@@ -10,14 +10,19 @@ on:
 jobs:
   hardening-sg13g2:
     runs-on: ubuntu-latest
+    container:
+      image: hpretl/iic-osic-tools:latest
+      options: --user root
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run LibreLane RTL-to-GDSII (ihp-sg13g2)
-        uses: fossi-foundation/librelane-action@v0.1
-        with:
-          arguments: --pdk ihp-sg13g2 --run-tag n200_150mhz openlane/config.json
+        run: |
+          export PDK_ROOT=/foss/pdks
+          export PDK=ihp-sg13g2
+          librelane --pdk ihp-sg13g2 --run-tag n200_150mhz openlane/config.json
 
       - name: Upload GDSII and Signoff Reports
         if: always()
