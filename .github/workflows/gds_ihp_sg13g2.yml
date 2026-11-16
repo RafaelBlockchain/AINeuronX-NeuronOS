@@ -7,7 +7,7 @@ on:
       - 'src/**'
       - 'openlane/**'
       - '.github/workflows/gds_ihp_sg13g2.yml'
-       
+          
 jobs:
   hardening-sg13g2:
     runs-on: ubuntu-latest
