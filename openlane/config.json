@@ -8,7 +8,7 @@
         "dir::../src/core_compute/tensor/systolic_buffer.sv",
         "dir::../src/core_compute/tensor/systolic_array.sv",
         "dir::../src/core_compute/tensor/systolic_pe.sv"
-    ],
+    ],     
     "CLOCK_PORT": "clk",
     "CLOCK_PERIOD": 6.67,
     "FP_SIZING": "relative",
