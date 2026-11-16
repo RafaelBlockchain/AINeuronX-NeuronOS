@@ -27,6 +27,11 @@ module systolic_buffer #(
     logic signed [DATA_WIDTH-1:0] b_mem [0:K_DIM-1][0:COLS-1];
 
     always_comb begin
+        int a_k;
+        int b_k;
+
+        a_k     = 0;
+        b_k     = 0;
         a_feed  = '0;
         b_feed  = '0;
         valid_a = '0;
@@ -35,7 +40,7 @@ module systolic_buffer #(
         if (feed_enable) begin
             // A: skew por fila.
             for (int r = 0; r < ROWS; r++) begin
-                automatic int a_k = $signed(cycle_count) - r;
+                a_k = $signed(cycle_count) - r;
                 if ((a_k >= 0) && (a_k < K_DIM)) begin
                     a_feed[r*DATA_WIDTH +: DATA_WIDTH] = a_mem[r][a_k];
                     valid_a[r] = 1'b1;
@@ -44,7 +49,7 @@ module systolic_buffer #(
 
             // B: skew por columna.
             for (int c = 0; c < COLS; c++) begin
-                automatic int b_k = $signed(cycle_count) - c;
+                b_k = $signed(cycle_count) - c;
                 if ((b_k >= 0) && (b_k < K_DIM)) begin
                     b_feed[c*DATA_WIDTH +: DATA_WIDTH] = b_mem[b_k][c];
                     valid_b[c] = 1'b1;
