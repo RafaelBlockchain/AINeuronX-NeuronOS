@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 
 module Tile_Core_Compute #(
     parameter int DATA_WIDTH = 16,
@@ -147,6 +148,7 @@ module Tile_Core_Compute #(
     // -------------------------
     // Parameter validation
     // -------------------------
+`ifndef SYNTHESIS
     initial begin
         if (DATA_WIDTH < 1 ||
             ACC_WIDTH < 2*DATA_WIDTH ||
@@ -157,5 +159,6 @@ module Tile_Core_Compute #(
             $fatal(1, "Invalid Tile_Core_Compute parameters");
         end
     end
+`endif
 
 endmodule
