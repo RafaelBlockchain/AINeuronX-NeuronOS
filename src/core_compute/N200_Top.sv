@@ -43,6 +43,8 @@ module N200_Top #(
     logic [ROWS*K_DIM*DATA_WIDTH-1:0] flat_matrix_a;
     logic [K_DIM*COLS*DATA_WIDTH-1:0] flat_matrix_b;
 
+    logic [31:0] bus_rdata_next;
+
     assign flat_vector_a = {reg_vector_a[1], reg_vector_a[0]};
     assign flat_vector_b = {reg_vector_b[1], reg_vector_b[0]};
 
@@ -54,11 +56,27 @@ module N200_Top #(
         end
     endgenerate
 
-    assign irq_done = vector_done || tensor_done;
+    // Decodificador combinacional interno (aislado de los pads por registro de salida)
+    always_comb begin
+        bus_rdata_next = 32'd0;
+        case (bus_addr)
+            6'h01: bus_rdata_next = {12'd0, tensor_valid, tensor_done, tensor_busy, vector_done, vector_busy};
+            6'h18, 6'h19, 6'h1A, 6'h1B:
+                bus_rdata_next = vector_result[bus_addr[1:0]*32 +: 32];
+            6'h20, 6'h21, 6'h22, 6'h23,
+            6'h24, 6'h25, 6'h26, 6'h27,
+            6'h28, 6'h29, 6'h2A, 6'h2B,
+            6'h2C, 6'h2D, 6'h2E, 6'h2F:
+                bus_rdata_next = tensor_accumulators[bus_addr[3:0]*32 +: 32];
+            default: bus_rdata_next = 32'd0;
+        endcase
+    end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             bus_ready        <= 1'b0;
+            bus_rdata        <= 32'd0;
+            irq_done         <= 1'b0;
             vector_start     <= 1'b0;
             vector_opcode    <= 2'b00;
             vector_clear_acc <= 1'b0;
@@ -77,7 +95,13 @@ module N200_Top #(
             vector_clear_acc <= 1'b0;
             tensor_load      <= 1'b0;
             tensor_start     <= 1'b0;
+
             bus_ready        <= bus_valid;
+            irq_done         <= vector_done || tensor_done;
+
+            if (bus_valid && !bus_we) begin
+                bus_rdata <= bus_rdata_next;
+            end
 
             if (bus_valid && bus_we) begin
                 case (bus_addr)
@@ -102,21 +126,6 @@ module N200_Top #(
                 endcase
             end
         end
-    end
-
-    always_comb begin
-        bus_rdata = 32'd0;
-        case (bus_addr)
-            6'h01: bus_rdata = {12'd0, tensor_valid, tensor_done, tensor_busy, vector_done, vector_busy};
-            6'h18, 6'h19, 6'h1A, 6'h1B:
-                bus_rdata = vector_result[bus_addr[1:0]*32 +: 32];
-            6'h20, 6'h21, 6'h22, 6'h23,
-            6'h24, 6'h25, 6'h26, 6'h27,
-            6'h28, 6'h29, 6'h2A, 6'h2B,
-            6'h2C, 6'h2D, 6'h2E, 6'h2F:
-                bus_rdata = tensor_accumulators[bus_addr[3:0]*32 +: 32];
-            default: bus_rdata = 32'd0;
-        endcase
     end
 
     Tile_Core_Compute #(
