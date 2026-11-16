@@ -1,0 +1,23 @@
+{
+    "DESIGN_NAME": "N200_Top",
+    "VERILOG_FILES": [
+        "dir::../src/core_compute/N200_Top.sv",
+        "dir::../src/core_compute/Tile_Core_Compute.sv",
+        "dir::../src/core_compute/vector/vector_unit.sv",
+        "dir::../src/core_compute/tensor/systolic_ctrl.sv",
+        "dir::../src/core_compute/tensor/systolic_buffer.sv",
+        "dir::../src/core_compute/tensor/systolic_array.sv",
+        "dir::../src/core_compute/tensor/systolic_pe.sv"
+    ],
+    "CLOCK_PORT": "clk",
+    "CLOCK_PERIOD": 6.67,
+    "FP_SIZING": "relative",
+    "FP_CORE_UTIL": 55,
+    "PL_TARGET_DENSITY": 0.60,
+    "SYNTH_STRATEGY": "DELAY 1",
+    "MAX_FANOUT_CONSTRAINT": 8,
+    "RUN_CTS": true,
+    "RUN_KLAYOUT_DRC": true,
+    "RUN_MAGIC_DRC": true,
+    "RUN_LVS": true
+}
