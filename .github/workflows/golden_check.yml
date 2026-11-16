@@ -42,7 +42,7 @@ jobs:
             hierarchy -check -top N200_Top;
             proc; opt; fsm; opt; memory; opt;
             techmap; opt;
-            check -assert -noinit;
+            check -assert;
             stat
           "
           
