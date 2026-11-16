@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/**'
       - 'openlane/**'
+      - '.github/workflows/gds_ihp_sg13g2.yml'
 
 jobs:
   hardening-sg13g2:
@@ -20,6 +21,7 @@ jobs:
 
       - name: Run LibreLane RTL-to-GDSII (ihp-sg13g2)
         run: |
+          export PATH=/foss/tools/bin:$PATH
           export PDK_ROOT=/foss/pdks
           export PDK=ihp-sg13g2
           librelane --pdk ihp-sg13g2 --run-tag n200_150mhz openlane/config.json
