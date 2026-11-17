@@ -16,8 +16,18 @@
     "CLOCK_NET": "core_clk_main",
     "CLOCK_PERIOD": 13.33,
     "FP_SIZING": "absolute",
-    "DIE_AREA":,
-    "CORE_AREA":,
+    "DIE_AREA": [
+        0,
+        0,
+        2000,
+        2000
+    ],
+    "CORE_AREA": [
+        350,
+        350,
+        1650,
+        1650
+    ],
     "PAD_NORTH": [
         "u_pad_vdd",
         "u_pad_vss",
@@ -97,4 +107,3 @@
     "MAGIC_RUN_LVS": false,
     "RUN_LVS": true
 }
-    
