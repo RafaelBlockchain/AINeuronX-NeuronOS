@@ -12,22 +12,27 @@ module systolic_pe #(
 
     // Operand A path
     input  logic signed [DATA_WIDTH-1:0] a_in,
-    input  logic valid_a_in,
+    input  logic                         valid_a_in,
     output logic signed [DATA_WIDTH-1:0] a_out,
-    output logic valid_a_out,
+    output logic                         valid_a_out,
 
     // Operand B path
     input  logic signed [DATA_WIDTH-1:0] b_in,
-    input  logic valid_b_in,
+    input  logic                         valid_b_in,
     output logic signed [DATA_WIDTH-1:0] b_out,
-    output logic valid_b_out,
+    output logic                         valid_b_out,
 
     // Accumulator status
-    output logic signed [ACC_WIDTH-1:0] acc_out,
-    output logic valid_out
+    output logic signed [ACC_WIDTH-1:0]  acc_out,
+    output logic                         valid_out
 );
 
     localparam int PRODUCT_WIDTH = 2 * DATA_WIDTH;
+
+    // Señales de activación y aislamiento de energía (Operand Isolation)
+    logic                            mac_active;
+    logic signed [DATA_WIDTH-1:0]    a_gated;
+    logic signed [DATA_WIDTH-1:0]    b_gated;
 
     // Stage 1: Combinational signed multiplication
     logic signed [PRODUCT_WIDTH-1:0] product_comb;
@@ -37,51 +42,62 @@ module systolic_pe #(
     logic                            mac_valid_d1;
 
     // Stage 2: Sign-extended product and accumulator
-    logic signed [ACC_WIDTH-1:0] product_ext;
-    logic signed [ACC_WIDTH-1:0] acc_reg;
+    logic signed [ACC_WIDTH-1:0]     product_ext;
+    logic signed [ACC_WIDTH-1:0]     acc_reg;
 
-    // Stage 1 multiplication
+    // Aislamiento de operandos: congela entradas del multiplicador si no son válidas
+    assign mac_active = valid_a_in && valid_b_in;
+    assign a_gated    = mac_active ? a_in : '0;
+    assign b_gated    = mac_active ? b_in : '0;
+
+    // Stage 1 multiplication (solo conmuta cuando mac_active == 1)
     always_comb begin
-        product_comb = $signed(a_in) * $signed(b_in);
+        product_comb = a_gated * b_gated;
     end
 
-    // Stage 2 sign extension
-    always_comb begin
-        product_ext = {
-            {(ACC_WIDTH-PRODUCT_WIDTH){product_reg[PRODUCT_WIDTH-1]}},
-            product_reg
-        };
-    end
+    // Stage 2 sign extension nativa en SystemVerilog
+    assign product_ext = ACC_WIDTH'(product_reg);
 
-    // Operand propagation (1 cycle) and pipelined MAC (2 cycles total)
+    // Propagación de operandos con Clock Gating inferido (solo actualiza si valid == 1)
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            a_out        <= '0;
-            b_out        <= '0;
-            valid_a_out  <= 1'b0;
-            valid_b_out  <= 1'b0;
+            a_out       <= '0;
+            valid_a_out <= 1'b0;
+        end else begin
+            valid_a_out <= valid_a_in;
+            if (valid_a_in) begin
+                a_out <= a_in;
+            end
+        end
+    end
 
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            b_out       <= '0;
+            valid_b_out <= 1'b0;
+        end else begin
+            valid_b_out <= valid_b_in;
+            if (valid_b_in) begin
+                b_out <= b_in;
+            end
+        end
+    end
+
+    // Pipeline Stage 1 & Stage 2: MAC de 2 ciclos con gating en registros
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             product_reg  <= '0;
             mac_valid_d1 <= 1'b0;
-
             acc_reg      <= '0;
             valid_out    <= 1'b0;
         end else begin
-            // Propagate operands to neighboring PEs without extra stall
-            a_out       <= a_in;
-            b_out       <= b_in;
-            valid_a_out <= valid_a_in;
-            valid_b_out <= valid_b_in;
-
-            // Pipeline Stage 1: Latch product when both inputs are valid
-            mac_valid_d1 <= valid_a_in && valid_b_in;
-            if (valid_a_in && valid_b_in) begin
+            // Stage 1: Latch del producto solo cuando ambos operandos son válidos
+            mac_valid_d1 <= mac_active;
+            if (mac_active) begin
                 product_reg <= product_comb;
-            end else begin
-                product_reg <= '0;
             end
 
-            // Pipeline Stage 2: Accumulate latched product
+            // Stage 2: Acumulación solo cuando clear_acc o mac_valid_d1 están activos
             valid_out <= mac_valid_d1;
             if (clear_acc) begin
                 acc_reg <= '0;
