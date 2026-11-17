@@ -1,7 +1,7 @@
 import glob
 from siliconcompiler import ASIC, Design
 from siliconcompiler.targets import freepdk45_demo
-
+   
 def find_file(pattern):
     matches = glob.glob(f'src/**/{pattern}', recursive=True)
     if not matches:
