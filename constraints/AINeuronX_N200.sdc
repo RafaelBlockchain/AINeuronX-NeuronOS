@@ -1,11 +1,23 @@
 set_units -time ns -capacitance pF -current mA
-  
-create_clock -name clk -period 1.0 [get_ports clk]   ;# 1 GHz target
-set_clock_uncertainty 0.05 [get_clocks clk]
 
-set_input_delay  0.2 -clock clk [all_inputs]
-set_output_delay 0.2 -clock clk [all_outputs]
+# Reloj principal: 10.0 ns (100 MHz) para baseline en 55nm
+# Una vez logres cierre limpio, puedes bajar gradualmente a 6.66 ns (150 MHz) o 5.0 ns (200 MHz)
+create_clock -name clk -period 10.0 [get_ports clk]
 
-set_load 0.05 [all_outputs]
+# Incertidumbre y transición del reloj ajustadas a 55nm
+set_clock_uncertainty 0.15 [get_clocks clk]
+set_clock_transition 0.10 [get_clocks clk]
 
-set_max_fanout 16 [current_design]
+# Excluir el puerto de reloj de los retardos de entrada
+set non_clk_inputs [remove_from_collection [all_inputs] [get_ports clk]]
+
+# Retardos de I/O (20% del periodo de reloj)
+set_input_delay  2.0 -clock clk $non_clk_inputs
+set_output_delay 2.0 -clock clk [all_outputs]
+
+# Transición de entrada y carga de salida típicas para bloques internos en 55nm
+set_input_transition 0.15 $non_clk_inputs
+set_load 0.03 [all_outputs]
+
+# Fanout alineado con config.json
+set_max_fanout 8 [current_design]
