@@ -24,15 +24,15 @@ jobs:
           export PATH=/foss/tools/bin:$PATH
           export PDK_ROOT=/foss/pdks
           export PDK=ihp-sg13g2
-          librelane --pdk ihp-sg13g2 --run-tag n200_150mhz openlane/config.json
+          librelane --pdk ihp-sg13g2 --run-tag aineuronx_8x8_75mhz openlane/config.json
 
       - name: Upload GDSII and Signoff Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: N200_Top-ihp-sg13g2-GDS
+          name: AINeuronX-8x8-ihp-sg13g2-75MHz-GDS
           path: |
-            openlane/runs/n200_150mhz/final/
-            openlane/runs/n200_150mhz/54-klayout-streamout/
-            openlane/runs/n200_150mhz/logs/
+            openlane/runs/aineuronx_8x8_75mhz/final/
+            openlane/runs/aineuronx_8x8_75mhz/54-klayout-streamout/
+            openlane/runs/aineuronx_8x8_75mhz/logs/
             
