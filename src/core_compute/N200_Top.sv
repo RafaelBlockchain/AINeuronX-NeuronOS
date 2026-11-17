@@ -4,25 +4,29 @@ module N200_Top #(
     parameter int DATA_WIDTH = 16,
     parameter int ACC_WIDTH  = 32,
     parameter int LANES      = 4,
-    parameter int ROWS       = 4,
-    parameter int COLS       = 4,
-    parameter int K_DIM      = 4
+    parameter int ROWS       = 8,
+    parameter int COLS       = 8,
+    parameter int K_DIM      = 8
 ) (
     input  logic        clk,
     input  logic        rst_n,
     input  logic        bus_valid,
     input  logic        bus_we,
-    input  logic [5:0]  bus_addr,
+    input  logic [7:0]  bus_addr,
     input  logic [31:0] bus_wdata,
     output logic [31:0] bus_rdata,
     output logic        bus_ready,
     output logic        irq_done
 );
 
+    // Cantidad de palabras de 32 bits necesarias para cada matriz de 16 bits
+    localparam int MAT_A_WORDS = (ROWS * K_DIM * DATA_WIDTH) / 32; // 32 palabras para 8x8
+    localparam int MAT_B_WORDS = (K_DIM * COLS * DATA_WIDTH) / 32; // 32 palabras para 8x8
+
     logic [31:0] reg_vector_a [0:1];
     logic [31:0] reg_vector_b [0:1];
-    logic [31:0] reg_matrix_a [0:7];
-    logic [31:0] reg_matrix_b [0:7];
+    logic [31:0] reg_matrix_a [0:MAT_A_WORDS-1];
+    logic [31:0] reg_matrix_b [0:MAT_B_WORDS-1];
 
     logic        vector_start;
     logic [1:0]  vector_opcode;
@@ -50,28 +54,33 @@ module N200_Top #(
 
     genvar i;
     generate
-        for (i = 0; i < 8; i++) begin : gen_mat_pack
+        for (i = 0; i < MAT_A_WORDS; i = i + 1) begin : gen_mat_a_pack
             assign flat_matrix_a[i*32 +: 32] = reg_matrix_a[i];
+        end
+        for (i = 0; i < MAT_B_WORDS; i = i + 1) begin : gen_mat_b_pack
             assign flat_matrix_b[i*32 +: 32] = reg_matrix_b[i];
         end
     endgenerate
 
-    // Decodificador combinacional interno (aislado de los pads por registro de salida)
+    // Decodificador de lectura (Bus de direcciones de 8 bits)
     always_comb begin
         bus_rdata_next = 32'd0;
-        case (bus_addr)
-            6'h01: bus_rdata_next = {12'd0, tensor_valid, tensor_done, tensor_busy, vector_done, vector_busy};
-            6'h18, 6'h19, 6'h1A, 6'h1B:
-                bus_rdata_next = vector_result[bus_addr[1:0]*32 +: 32];
-            6'h20, 6'h21, 6'h22, 6'h23,
-            6'h24, 6'h25, 6'h26, 6'h27,
-            6'h28, 6'h29, 6'h2A, 6'h2B,
-            6'h2C, 6'h2D, 6'h2E, 6'h2F:
-                bus_rdata_next = tensor_accumulators[bus_addr[3:0]*32 +: 32];
-            default: bus_rdata_next = 32'd0;
-        endcase
+
+        if (bus_addr == 8'h01) begin
+            bus_rdata_next = {28'd0, tensor_done, tensor_busy, vector_done, vector_busy};
+        end else if (bus_addr == 8'h02) begin
+            bus_rdata_next = tensor_valid[31:0];
+        end else if (bus_addr == 8'h03) begin
+            bus_rdata_next = tensor_valid[63:32];
+        end else if ((bus_addr >= 8'h18) && (bus_addr <= 8'h1B)) begin
+            bus_rdata_next = vector_result[bus_addr[1:0]*32 +: 32];
+        end else if ((bus_addr >= 8'h80) && (bus_addr <= 8'hBF)) begin
+            // 64 acumuladores de 32 bits mapeados de 0x80 a 0xBF
+            bus_rdata_next = tensor_accumulators[bus_addr[5:0]*32 +: 32];
+        end
     end
 
+    // Lógica de escritura y control
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             bus_ready        <= 1'b0;
@@ -86,8 +95,11 @@ module N200_Top #(
             reg_vector_a[1]  <= 32'd0;
             reg_vector_b[0]  <= 32'd0;
             reg_vector_b[1]  <= 32'd0;
-            for (int k = 0; k < 8; k++) begin
+
+            for (int k = 0; k < MAT_A_WORDS; k++) begin
                 reg_matrix_a[k] <= 32'd0;
+            end
+            for (int k = 0; k < MAT_B_WORDS; k++) begin
                 reg_matrix_b[k] <= 32'd0;
             end
         end else begin
@@ -104,26 +116,27 @@ module N200_Top #(
             end
 
             if (bus_valid && bus_we) begin
-                case (bus_addr)
-                    6'h00: begin
-                        vector_start     <= bus_wdata[0];
-                        vector_clear_acc <= bus_wdata[1];
-                        vector_opcode    <= bus_wdata[3:2];
-                        tensor_load      <= bus_wdata[4];
-                        tensor_start     <= bus_wdata[5];
-                    end
-                    6'h04: reg_vector_a[0] <= bus_wdata;
-                    6'h05: reg_vector_a[1] <= bus_wdata;
-                    6'h06: reg_vector_b[0] <= bus_wdata;
-                    6'h07: reg_vector_b[1] <= bus_wdata;
-                    6'h08, 6'h09, 6'h0A, 6'h0B,
-                    6'h0C, 6'h0D, 6'h0E, 6'h0F:
-                        reg_matrix_a[bus_addr[2:0]] <= bus_wdata;
-                    6'h10, 6'h11, 6'h12, 6'h13,
-                    6'h14, 6'h15, 6'h16, 6'h17:
-                        reg_matrix_b[bus_addr[2:0]] <= bus_wdata;
-                    default: ;
-                endcase
+                if (bus_addr == 8'h00) begin
+                    vector_start     <= bus_wdata[0];
+                    vector_clear_acc <= bus_wdata[1];
+                    vector_opcode    <= bus_wdata[3:2];
+                    tensor_load      <= bus_wdata[4];
+                    tensor_start     <= bus_wdata[5];
+                end else if (bus_addr == 8'h04) begin
+                    reg_vector_a[0] <= bus_wdata;
+                end else if (bus_addr == 8'h05) begin
+                    reg_vector_a[1] <= bus_wdata;
+                end else if (bus_addr == 8'h06) begin
+                    reg_vector_b[0] <= bus_wdata;
+                end else if (bus_addr == 8'h07) begin
+                    reg_vector_b[1] <= bus_wdata;
+                end else if ((bus_addr >= 8'h20) && (bus_addr <= 8'h3F)) begin
+                    // 32 palabras para Matrix A (0x20 a 0x3F)
+                    reg_matrix_a[bus_addr[4:0]] <= bus_wdata;
+                end else if ((bus_addr >= 8'h40) && (bus_addr <= 8'h5F)) begin
+                    // 32 palabras para Matrix B (0x40 a 0x5F)
+                    reg_matrix_b[bus_addr[4:0]] <= bus_wdata;
+                end
             end
         end
     end
