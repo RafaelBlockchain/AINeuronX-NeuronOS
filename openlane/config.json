@@ -12,8 +12,18 @@
     "CLOCK_NET": "u_pad_clk.p2c",
     "CLOCK_PERIOD": 13.33,
     "FP_SIZING": "absolute",
-    "DIE_AREA":,
-    "CORE_AREA":,
+    "DIE_AREA": [
+        0,
+        0,
+        2000,
+        2000
+    ],
+    "CORE_AREA": [
+        350,
+        350,
+        1650,
+        1650
+    ],
     "PAD_CFG": "dir::padring.cfg",
     "PAD_CORNER": [
         "sg13g2_Corner"
