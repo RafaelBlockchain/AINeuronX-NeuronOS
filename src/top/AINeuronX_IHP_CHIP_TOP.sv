@@ -10,13 +10,7 @@ module AINeuronX_IHP_CHIP_TOP (
 
     inout  wire        pad_out_valid,
     inout  wire [15:0] pad_out_data,
-    inout  wire        pad_out_ready,
-
-    // Pines físicos de alimentación (Núcleo 1.2V y Anillo I/O 3.3V)
-    inout  wire        pad_vdd,    // 1.2V Core Power
-    inout  wire        pad_vss,    // Core Ground
-    inout  wire        pad_iovdd,  // 3.3V I/O Ring Power
-    inout  wire        pad_iovss   // I/O Ring Ground
+    inout  wire        pad_out_ready
 );
 
     // Señales internas de 1.2 V conectadas al núcleo 8x8
@@ -33,12 +27,12 @@ module AINeuronX_IHP_CHIP_TOP (
     wire        core_out_ready;
 
     // ---------------------------------------------------------
-    // 1. PADS DE ALIMENTACIÓN (IHP SG13G2 I/O Library)
+    // 1. PADS DE ALIMENTACIÓN (Sin puertos lógicos en IHP SG13G2)
     // ---------------------------------------------------------
-    sg13g2_IOPadVdd   u_pad_vdd   (.pad(pad_vdd));
-    sg13g2_IOPadVss   u_pad_vss   (.pad(pad_vss));
-    sg13g2_IOPadIOVdd u_pad_iovdd (.pad(pad_iovdd));
-    sg13g2_IOPadIOVss u_pad_iovss (.pad(pad_iovss));
+    sg13g2_IOPadVdd   u_pad_vdd   ();
+    sg13g2_IOPadVss   u_pad_vss   ();
+    sg13g2_IOPadIOVdd u_pad_iovdd ();
+    sg13g2_IOPadIOVss u_pad_iovss ();
 
     // ---------------------------------------------------------
     // 2. PADS DE ENTRADA (3.3 V externo -> 1.2 V interno)
