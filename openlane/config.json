@@ -33,5 +33,17 @@
     "MAGIC_RUN_LVS": false,
     "RUN_KLAYOUT_DRC": true,
     "RUN_KLAYOUT_XOR": false,
-    "RUN_LVS": true
+    "RUN_LVS": true,
+    "meta": {
+        "substituting_steps": {
+            "Magic.DRC": null,
+            "Checker.MagicDRC": null,
+            "Magic.SpiceExtraction": null,
+            "Checker.IllegalOverlap": null,
+            "KLayout.XOR": null,
+            "Checker.XOR": null,
+            "-Netgen.LVS": "OpenROAD.WriteCDL",
+            "Netgen.LVS": "ICS55.KLayoutLVS"
+        }
+    }
 }
