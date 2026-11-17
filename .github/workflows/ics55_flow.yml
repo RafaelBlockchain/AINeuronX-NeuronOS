@@ -19,7 +19,9 @@ jobs:
 
       - name: Instalar ICsprout 55nm OpenPDK
         run: |
-          git clone --depth 1 https://github.com $HOME/pdk_root
+          ORG="ckdur"
+          REPO="icsprout55-openpdk.git"
+          git clone --depth 1 "https://github.com{ORG}/${REPO}" "$HOME/pdk_root"
           echo "PDK_ROOT=$HOME/pdk_root" >> $GITHUB_ENV
           echo "PDK=icsprout55" >> $GITHUB_ENV
           echo "PYTHONPATH=$HOME/pdk_root/icsprout55/libs.tech/librelane" >> $GITHUB_ENV
