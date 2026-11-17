@@ -1,15 +1,14 @@
 import os
 import glob
-import siliconcompiler
+from siliconcompiler import ASIC, Design
+from siliconcompiler.targets import freepdk45_demo
 
 def main():
-    # 1. Apuntar al módulo Top de 8x8
-    chip = siliconcompiler.Chip('AINeuronX_N200_8x8_TOP')
+    # 1. Configurar el diseño y los archivos fuente
+    design = Design('AINeuronX_N200_8x8_TOP')
+    design.set_topmodule('AINeuronX_N200_8x8_TOP', fileset='rtl')
 
-    # 2. Cargar el PDK libre de 45 nm (Nangate 45nm)
-    chip.load_target('freepdk45_demo')
-
-    # 3. Buscar todos los archivos .sv y .SV dentro de src/ excluyendo testbenches
+    # Buscar todos los archivos .sv y .SV dentro de src/ excluyendo testbenches
     sv_files = []
     for ext in ('*.sv', '*.SV'):
         sv_files.extend(glob.glob(f'src/**/{ext}', recursive=True))
@@ -17,21 +16,25 @@ def main():
     for f in sorted(set(sv_files)):
         filename = os.path.basename(f).upper()
         if '_TB' not in filename and 'TB_' not in filename:
-            # Forzar filetype='systemverilog' activa Surelog para soportar 'int', 'always_ff' y '0
-            chip.input(f, filetype='systemverilog')
+            design.add_file(f, fileset='rtl', filetype='systemverilog')
 
-    # 4. Cargar restricciones de 250 MHz
-    chip.input('constraints.sdc')
+    # Cargar restricciones de tiempo (250 MHz)
+    design.add_file('constraints.sdc', fileset='sdc')
 
-    # 5. Parámetros de optimización
-    chip.set('option', 'quiet', False)
-    chip.set('constraint', 'density', 0.65)
+    # 2. Crear el proyecto ASIC y cargar el PDK libre de 45 nm
+    project = ASIC(design)
+    project.add_fileset(['rtl', 'sdc'])
+    project.load_target(freepdk45_demo)
 
-    # 6. Ejecutar todo el flujo RTL -> GDSII
-    chip.run()
+    # 3. Parámetros de optimización física
+    project.set('option', 'quiet', False)
+    project.set('constraint', 'density', 0.65)
 
-    # 7. Imprimir tabla resumen de Área, Potencia y Timing (WNS)
-    chip.summary()
+    # 4. Ejecutar todo el flujo RTL -> GDSII
+    project.run()
+
+    # 5. Imprimir resumen de métricas (Área, Potencia, WNS)
+    project.summary()
 
 if __name__ == '__main__':
     main()
