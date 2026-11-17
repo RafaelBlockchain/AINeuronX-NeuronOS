@@ -21,14 +21,14 @@ def main():
     # Cargar restricciones de tiempo (250 MHz)
     design.add_file('constraints.sdc', fileset='sdc')
 
-    # 2. Crear el proyecto ASIC y cargar el PDK libre de 45 nm
+    # 2. Crear el proyecto ASIC y aplicar el objetivo FreePDK45 (Nangate 45nm)
     project = ASIC(design)
     project.add_fileset(['rtl', 'sdc'])
-    project.load_target(freepdk45_demo)
+    freepdk45_demo(project)
 
-    # 3. Parámetros de optimización física
-    project.set('option', 'quiet', False)
-    project.set('constraint', 'density', 0.65)
+    # 3. Parámetros de ejecución y densidad
+    project.option.set_quiet(False)
+    project.constraint.area.set_density(65)
 
     # 4. Ejecutar todo el flujo RTL -> GDSII
     project.run()
