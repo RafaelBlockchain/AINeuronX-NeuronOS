@@ -18,10 +18,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Instalar ICsprout 55nm OpenPDK
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ORG="ckdur"
-          REPO="icsprout55-openpdk.git"
-          git clone --depth 1 "https://github.com{ORG}/${REPO}" "$HOME/pdk_root"
+          gh repo clone ckdur/icsprout55-openpdk $HOME/pdk_root -- --depth 1
           echo "PDK_ROOT=$HOME/pdk_root" >> $GITHUB_ENV
           echo "PDK=icsprout55" >> $GITHUB_ENV
           echo "PYTHONPATH=$HOME/pdk_root/icsprout55/libs.tech/librelane" >> $GITHUB_ENV
