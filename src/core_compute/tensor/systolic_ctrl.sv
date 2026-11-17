@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
 
 module systolic_ctrl #(
-    parameter int ROWS  = 2,
-    parameter int COLS  = 2,
-    parameter int K_DIM = 2
+    parameter int ROWS  = 4,   // Sincronizar con systolic_array
+    parameter int COLS  = 4,   // Sincronizar con systolic_array
+    parameter int K_DIM = 4    // Dimensión interna de multiplicación
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -21,10 +21,9 @@ module systolic_ctrl #(
     output logic [31:0] cycle_count
 );
 
-    // Total number of feed cycles:
-    // K_DIM + ROWS + COLS - 2
-    localparam int FEED_CYCLES =
-        K_DIM + ROWS + COLS - 2;
+    // Total number of feed cycles: K_DIM + ROWS + COLS - 2
+    localparam int FEED_CYCLES = K_DIM + ROWS + COLS - 2;
+    localparam int CNT_WIDTH   = (FEED_CYCLES > 1) ? $clog2(FEED_CYCLES + 1) : 1;
 
     typedef enum logic [2:0] {
         IDLE,
@@ -36,8 +35,9 @@ module systolic_ctrl #(
 
     state_t state;
 
-    logic [31:0] feed_count;
-    logic [1:0]  drain_cnt; // 3 ciclos de drenaje (1 ciclo buffer + 2 etapas del PE)
+    logic [CNT_WIDTH-1:0] feed_count;
+    logic                 clear_cnt; // 2 ciclos para compensar el pipeline de clear_acc_row
+    logic [1:0]           drain_cnt; // 3 ciclos de drenaje (1 ciclo buffer + 2 etapas del PE)
 
     always_comb begin
         clear_acc   = 1'b0;
@@ -46,13 +46,13 @@ module systolic_ctrl #(
         done        = 1'b0;
 
         case (state)
-
             IDLE: begin
                 busy = 1'b0;
             end
 
             CLEAR: begin
-                clear_acc = 1'b1;
+                // Solo afirma clear_acc en el primer ciclo; el segundo espera la propagación
+                clear_acc = (clear_cnt == 1'b0);
                 busy      = 1'b1;
             end
 
@@ -72,25 +72,22 @@ module systolic_ctrl #(
             default: begin
                 busy = 1'b0;
             end
-
         endcase
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-
         if (!rst_n) begin
             state       <= IDLE;
             feed_count  <= '0;
             cycle_count <= '0;
+            clear_cnt   <= 1'b0;
             drain_cnt   <= 2'd0;
-
         end else begin
-
             case (state)
-
                 IDLE: begin
                     feed_count  <= '0;
                     cycle_count <= '0;
+                    clear_cnt   <= 1'b0;
                     drain_cnt   <= 2'd0;
 
                     if (start) begin
@@ -102,23 +99,29 @@ module systolic_ctrl #(
                     feed_count  <= '0;
                     cycle_count <= '0;
                     drain_cnt   <= 2'd0;
-                    state       <= FEED;
+
+                    if (clear_cnt == 1'b1) begin
+                        clear_cnt <= 1'b0;
+                        state     <= FEED;
+                    end else begin
+                        clear_cnt <= 1'b1;
+                    end
                 end
 
                 FEED: begin
+                    cycle_count <= cycle_count + 32'd1;
 
-                    cycle_count <= cycle_count + 1'b1;
-
-                    if (feed_count == FEED_CYCLES - 1) begin
+                    if (feed_count == CNT_WIDTH'(FEED_CYCLES - 1)) begin
                         drain_cnt <= 2'd0;
                         state     <= DRAIN;
                     end else begin
-                        feed_count <= feed_count + 1'b1;
+                        feed_count <= feed_count + CNT_WIDTH'(1);
                     end
-
                 end
 
                 DRAIN: begin
+                    cycle_count <= cycle_count + 32'd1;
+
                     if (drain_cnt == 2'd2) begin
                         state <= FINISH;
                     end else begin
@@ -134,16 +137,15 @@ module systolic_ctrl #(
                     state       <= IDLE;
                     feed_count  <= '0;
                     cycle_count <= '0;
+                    clear_cnt   <= 1'b0;
                     drain_cnt   <= 2'd0;
                 end
-
             endcase
         end
     end
 
 `ifndef SYNTHESIS
     initial begin
-
         if (ROWS < 1)
             $fatal(1, "ROWS must be >= 1");
 
@@ -152,7 +154,6 @@ module systolic_ctrl #(
 
         if (K_DIM < 1)
             $fatal(1, "K_DIM must be >= 1");
-
     end
 `endif
 
