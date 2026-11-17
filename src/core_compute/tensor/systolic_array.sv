@@ -3,8 +3,8 @@
 module systolic_array #(
     parameter int DATA_WIDTH = 16,
     parameter int ACC_WIDTH  = 32,
-    parameter int ROWS       = 4,   // Cambiar fácilmente a 4, 8 o 16 al instanciar
-    parameter int COLS       = 4    // Cambiar fácilmente a 4, 8 o 16 al instanciar
+    parameter int ROWS       = 8,
+    parameter int COLS       = 8
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -25,14 +25,12 @@ module systolic_array #(
     logic [ROWS-1:0]              valid_a_bus [0:COLS];
     logic [COLS-1:0]              valid_b_bus [0:ROWS];
 
-    // Árbol de distribución local para reducir el fanout de clear_acc en matrices grandes
     logic [ROWS-1:0] clear_acc_row;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             clear_acc_row <= '0;
         end else begin
-            // Replica clear_acc por fila para evitar que un solo driver alimente 256+ PEs
             clear_acc_row <= {ROWS{clear_acc}};
         end
     end
@@ -40,7 +38,6 @@ module systolic_array #(
     genvar r;
     genvar c;
 
-    // Entradas de la primera columna (Operandos A)
     generate
         for (r = 0; r < ROWS; r = r + 1) begin : GEN_A_INPUT
             assign a_bus[r][0]      = $signed(a_feed[r*DATA_WIDTH +: DATA_WIDTH]);
@@ -48,7 +45,6 @@ module systolic_array #(
         end
     endgenerate
 
-    // Entradas de la primera fila (Operandos B)
     generate
         for (c = 0; c < COLS; c = c + 1) begin : GEN_B_INPUT
             assign b_bus[0][c]      = $signed(b_feed[c*DATA_WIDTH +: DATA_WIDTH]);
@@ -56,7 +52,6 @@ module systolic_array #(
         end
     endgenerate
 
-    // Matriz de Processing Elements
     generate
         for (r = 0; r < ROWS; r = r + 1) begin : GEN_ROW
             for (c = 0; c < COLS; c = c + 1) begin : GEN_COL
@@ -95,12 +90,8 @@ module systolic_array #(
 
 `ifndef SYNTHESIS
     initial begin
-        if (DATA_WIDTH < 1 ||
-            ACC_WIDTH < 2*DATA_WIDTH ||
-            ROWS < 1 ||
-            COLS < 1) begin
+        if (DATA_WIDTH < 1 || ACC_WIDTH < 2*DATA_WIDTH || ROWS < 1 || COLS < 1)
             $fatal(1, "Invalid systolic_array parameters");
-        end
     end
 `endif
 
