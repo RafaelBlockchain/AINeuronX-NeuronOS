@@ -13,7 +13,7 @@ set non_clk_inputs [remove_from_collection [all_inputs] [get_ports clk]]
 # Retardos de I/O (20% del periodo de reloj)
 set_input_delay  2.0 -clock clk $non_clk_inputs
 set_output_delay 2.0 -clock clk [all_outputs]
-
+   
 # Transición de entrada y carga de salida típicas para bloques internos en 55nm
 set_input_transition 0.15 $non_clk_inputs
 set_load 0.03 [all_outputs]
