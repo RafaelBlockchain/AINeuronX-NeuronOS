@@ -1,15 +1,13 @@
 {
-    "DESIGN_NAME": "N200_Top",
+    "DESIGN_NAME": "AINeuronX_N200_8x8_TOP",
     "VERILOG_FILES": [
-        "dir::../src/core_compute/N200_Top.sv",
-        "dir::../src/core_compute/Tile_Core_Compute.sv",
-        "dir::../src/core_compute/vector/vector_unit.sv",
-        "dir::../src/core_compute/tensor/systolic_pe.sv",
-        "dir::../src/core_compute/tensor/systolic_array.sv",
-        "dir::../src/core_compute/tensor/systolic_ctrl.sv",
-        "dir::../src/core_compute/tensor/systolic_buffer.sv"
+        "dir::../src/top/AINeuronX_N200_8x8_TOP.sv",
+        "dir::../src/array/AINeuronX_ARRAY_32x32_NOC.sv",
+        "dir::../src/tiles/AINeuronX_TILE_XY.sv",
+        "dir::../src/AINeuronX_N200_CORE.SV",
+        "dir::../src/noc/AINeuronX_NOC_ROUTER_XY.sv"
     ],
-    "CLOCK_PORT": "clk",
+    "CLOCK_PORT": "clk_main",
     "CLOCK_PERIOD": 13.33,
     "RT_MAX_LAYER": "Metal5",
     "FP_SIZING": "relative",
@@ -26,7 +24,7 @@
     "DRT_THREADS": 2,
     "RUN_LINTER": false,
     "RUN_CTS": true,
-    "RUN_KLAYOUT_DRC": false,
+    "RUN_KLAYOUT_DRC": true,
     "RUN_KLAYOUT_XOR": false,
     "RUN_MAGIC_DRC": true,
     "MAGIC_RUN_LVS": false,
