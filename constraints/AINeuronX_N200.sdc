@@ -1,7 +1,6 @@
 set_units -time ns -capacitance pF -current mA
 
 # Reloj principal: 10.0 ns (100 MHz) para baseline en 55nm
-# Una vez logres cierre limpio, puedes bajar gradualmente a 6.66 ns (150 MHz) o 5.0 ns (200 MHz)
 create_clock -name clk -period 10.0 [get_ports clk]
 
 # Incertidumbre y transición del reloj ajustadas a 55nm
