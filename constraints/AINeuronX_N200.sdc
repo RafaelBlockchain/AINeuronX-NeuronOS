@@ -2,7 +2,7 @@ set_units -time ns -capacitance pF -current mA
 
 # Reloj principal: 10.0 ns (100 MHz) para baseline en 55nm
 create_clock -name clk -period 10.0 [get_ports clk]
-
+   
 # Incertidumbre y transición del reloj ajustadas a 55nm
 set_clock_uncertainty 0.15 [get_clocks clk]
 set_clock_transition 0.10 [get_clocks clk]
