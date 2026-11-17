@@ -1,6 +1,6 @@
 # Definir el reloj principal clk_main a 250 MHz (periodo de 4.0 ns)
 create_clock -name clk_main -period 4.0 [get_ports clk_main]
-
+   
 # Margen de seguridad (jitter) simulando un PLL real en 40 nm
 set_clock_uncertainty 0.25 [get_clocks clk_main]
 
