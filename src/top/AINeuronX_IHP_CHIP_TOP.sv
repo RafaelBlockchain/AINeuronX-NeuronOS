@@ -43,15 +43,10 @@ module AINeuronX_IHP_CHIP_TOP (
     sg13g2_IOPadIn u_pad_ivalid (.pad(pad_in_valid),      .p2c(core_in_valid));
     sg13g2_IOPadIn u_pad_oready (.pad(pad_out_ready),     .p2c(core_out_ready));
 
-    genvar i;
-    generate
-        for (i = 0; i < 16; i = i + 1) begin : GEN_IN_PADS
-            sg13g2_IOPadIn u_pad_idata (
-                .pad(pad_in_data[i]),
-                .p2c(core_in_data[i])
-            );
-        end
-    endgenerate
+    sg13g2_IOPadIn u_pad_idata [15:0] (
+        .pad(pad_in_data),
+        .p2c(core_in_data)
+    );
 
     // ---------------------------------------------------------
     // 3. PADS DE SALIDA (1.2 V interno -> 3.3 V externo, 16 mA)
@@ -59,14 +54,10 @@ module AINeuronX_IHP_CHIP_TOP (
     sg13g2_IOPadOut16mA u_pad_iready (.pad(pad_in_ready),  .c2p(core_in_ready));
     sg13g2_IOPadOut16mA u_pad_ovalid (.pad(pad_out_valid), .c2p(core_out_valid));
 
-    generate
-        for (i = 0; i < 16; i = i + 1) begin : GEN_OUT_PADS
-            sg13g2_IOPadOut16mA u_pad_odata (
-                .pad(pad_out_data[i]),
-                .c2p(core_out_data[i])
-            );
-        end
-    endgenerate
+    sg13g2_IOPadOut16mA u_pad_odata [15:0] (
+        .pad(pad_out_data),
+        .c2p(core_out_data)
+    );
 
     // ---------------------------------------------------------
     // 4. NÚCLEO DIGITAL AINeuronX N200 8x8 (64 Cores Vectoriales)
