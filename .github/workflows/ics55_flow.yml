@@ -24,9 +24,8 @@ jobs:
           gh repo clone ckdur/icsprout55-openpdk $HOME/pdk_root -- --depth 1
           echo "PDK_ROOT=$HOME/pdk_root" >> $GITHUB_ENV
           echo "PDK=icsprout55" >> $GITHUB_ENV
-          echo "PYTHONPATH=$HOME/pdk_root/icsprout55/libs.tech/librelane" >> $GITHUB_ENV
 
-      - name: Ejecutar flujo LibreLane (Síntesis + PnR + KLayout DRC/LVS)
+      - name: Ejecutar flujo LibreLane (Síntesis + PnR + KLayout DRC)
         uses: fossi-foundation/librelane-action@v0.1
         with:
           working-directory: openlane
