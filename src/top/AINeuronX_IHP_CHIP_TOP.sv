@@ -1,0 +1,96 @@
+module AINeuronX_IHP_CHIP_TOP (
+    // Pines físicos externos del encapsulado QFN-48 (3.3 V)
+    inout  wire        pad_clk_main,
+    inout  wire        pad_rst_n,
+    inout  wire        pad_global_enable,
+
+    inout  wire        pad_in_valid,
+    inout  wire [15:0] pad_in_data,
+    inout  wire        pad_in_ready,
+
+    inout  wire        pad_out_valid,
+    inout  wire [15:0] pad_out_data,
+    inout  wire        pad_out_ready,
+
+    // Pines físicos de alimentación (Núcleo 1.2V y Anillo I/O 3.3V)
+    inout  wire        pad_vdd,    // 1.2V Core Power
+    inout  wire        pad_vss,    // Core Ground
+    inout  wire        pad_iovdd,  // 3.3V I/O Ring Power
+    inout  wire        pad_iovss   // I/O Ring Ground
+);
+
+    // Señales internas de 1.2 V conectadas al núcleo 8x8
+    wire        core_clk_main;
+    wire        core_rst_n;
+    wire        core_global_enable;
+
+    wire        core_in_valid;
+    wire [15:0] core_in_data;
+    wire        core_in_ready;
+
+    wire        core_out_valid;
+    wire [15:0] core_out_data;
+    wire        core_out_ready;
+
+    // ---------------------------------------------------------
+    // 1. PADS DE ALIMENTACIÓN (IHP SG13G2 I/O Library)
+    // ---------------------------------------------------------
+    sg13g2_IOPadVdd   u_pad_vdd   (.pad(pad_vdd));
+    sg13g2_IOPadVss   u_pad_vss   (.pad(pad_vss));
+    sg13g2_IOPadIOVdd u_pad_iovdd (.pad(pad_iovdd));
+    sg13g2_IOPadIOVss u_pad_iovss (.pad(pad_iovss));
+
+    // ---------------------------------------------------------
+    // 2. PADS DE ENTRADA (3.3 V externo -> 1.2 V interno)
+    // ---------------------------------------------------------
+    sg13g2_IOPadIn u_pad_clk    (.pad(pad_clk_main),      .p2c(core_clk_main));
+    sg13g2_IOPadIn u_pad_rst    (.pad(pad_rst_n),         .p2c(core_rst_n));
+    sg13g2_IOPadIn u_pad_en     (.pad(pad_global_enable), .p2c(core_global_enable));
+    sg13g2_IOPadIn u_pad_ivalid (.pad(pad_in_valid),      .p2c(core_in_valid));
+    sg13g2_IOPadIn u_pad_oready (.pad(pad_out_ready),     .p2c(core_out_ready));
+
+    genvar i;
+    generate
+        for (i = 0; i < 16; i = i + 1) begin : GEN_IN_PADS
+            sg13g2_IOPadIn u_pad_idata (
+                .pad(pad_in_data[i]),
+                .p2c(core_in_data[i])
+            );
+        end
+    endgenerate
+
+    // ---------------------------------------------------------
+    // 3. PADS DE SALIDA (1.2 V interno -> 3.3 V externo, 16 mA)
+    // ---------------------------------------------------------
+    sg13g2_IOPadOut16mA u_pad_iready (.pad(pad_in_ready),  .c2p(core_in_ready));
+    sg13g2_IOPadOut16mA u_pad_ovalid (.pad(pad_out_valid), .c2p(core_out_valid));
+
+    generate
+        for (i = 0; i < 16; i = i + 1) begin : GEN_OUT_PADS
+            sg13g2_IOPadOut16mA u_pad_odata (
+                .pad(pad_out_data[i]),
+                .c2p(core_out_data[i])
+            );
+        end
+    endgenerate
+
+    // ---------------------------------------------------------
+    // 4. NÚCLEO DIGITAL AINeuronX N200 8x8 (64 Cores Vectoriales)
+    // ---------------------------------------------------------
+    AINeuronX_N200_8x8_TOP #(
+        .DW(16)
+    ) u_core_8x8 (
+        .clk_main     (core_clk_main),
+        .rst_n        (core_rst_n),
+        .global_enable(core_global_enable),
+
+        .in_valid     (core_in_valid),
+        .in_data      (core_in_data),
+        .in_ready     (core_in_ready),
+
+        .out_valid    (core_out_valid),
+        .out_data     (core_out_data),
+        .out_ready    (core_out_ready)
+    );
+
+endmodule
