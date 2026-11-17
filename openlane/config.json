@@ -1,4 +1,8 @@
 {
+    "meta": {
+        "version": 2,
+        "flow": "Chip"
+    },
     "DESIGN_NAME": "AINeuronX_IHP_CHIP_TOP",
     "VERILOG_FILES": [
         "dir::../src/top/AINeuronX_IHP_CHIP_TOP.sv",
@@ -9,7 +13,7 @@
         "dir::../src/noc/AINeuronX_NOC_ROUTER_XY.sv"
     ],
     "CLOCK_PORT": "pad_clk_main",
-    "CLOCK_NET": "u_pad_clk.p2c",
+    "CLOCK_NET": "u_pad_clk/p2c",
     "CLOCK_PERIOD": 13.33,
     "FP_SIZING": "absolute",
     "DIE_AREA": [
@@ -24,7 +28,57 @@
         1650,
         1650
     ],
-    "PAD_CFG": "dir::padring.cfg",
+    "PAD_NORTH": [
+        "u_pad_vdd",
+        "u_pad_vss",
+        "u_pad_clk",
+        "u_pad_rst",
+        "u_pad_en",
+        "u_pad_ivalid",
+        "u_pad_iready",
+        "u_pad_ovalid",
+        "u_pad_oready",
+        "u_pad_iovdd",
+        "u_pad_iovss"
+    ],
+    "PAD_WEST": [
+        "GEN_IN_PADS[0].u_pad_idata",
+        "GEN_IN_PADS[1].u_pad_idata",
+        "GEN_IN_PADS[2].u_pad_idata",
+        "GEN_IN_PADS[3].u_pad_idata",
+        "GEN_IN_PADS[4].u_pad_idata",
+        "GEN_IN_PADS[5].u_pad_idata",
+        "GEN_IN_PADS[6].u_pad_idata",
+        "GEN_IN_PADS[7].u_pad_idata",
+        "GEN_IN_PADS[8].u_pad_idata",
+        "GEN_IN_PADS[9].u_pad_idata",
+        "GEN_IN_PADS[10].u_pad_idata"
+    ],
+    "PAD_SOUTH": [
+        "GEN_IN_PADS[11].u_pad_idata",
+        "GEN_IN_PADS[12].u_pad_idata",
+        "GEN_IN_PADS[13].u_pad_idata",
+        "GEN_IN_PADS[14].u_pad_idata",
+        "GEN_IN_PADS[15].u_pad_idata",
+        "GEN_OUT_PADS[0].u_pad_odata",
+        "GEN_OUT_PADS[1].u_pad_odata",
+        "GEN_OUT_PADS[2].u_pad_odata",
+        "GEN_OUT_PADS[3].u_pad_odata",
+        "GEN_OUT_PADS[4].u_pad_odata"
+    ],
+    "PAD_EAST": [
+        "GEN_OUT_PADS[5].u_pad_odata",
+        "GEN_OUT_PADS[6].u_pad_odata",
+        "GEN_OUT_PADS[7].u_pad_odata",
+        "GEN_OUT_PADS[8].u_pad_odata",
+        "GEN_OUT_PADS[9].u_pad_odata",
+        "GEN_OUT_PADS[10].u_pad_odata",
+        "GEN_OUT_PADS[11].u_pad_odata",
+        "GEN_OUT_PADS[12].u_pad_odata",
+        "GEN_OUT_PADS[13].u_pad_odata",
+        "GEN_OUT_PADS[14].u_pad_odata",
+        "GEN_OUT_PADS[15].u_pad_odata"
+    ],
     "PAD_CORNER": [
         "sg13g2_Corner"
     ],
