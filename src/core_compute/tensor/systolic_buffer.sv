@@ -2,9 +2,9 @@
 
 module systolic_buffer #(
     parameter int DATA_WIDTH = 16,
-    parameter int ROWS       = 4,   // Sincronizar con systolic_array
-    parameter int COLS       = 4,   // Sincronizar con systolic_array
-    parameter int K_DIM      = 4    // Sincronizar con systolic_ctrl
+    parameter int ROWS       = 8,
+    parameter int COLS       = 8,
+    parameter int K_DIM      = 8
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -33,7 +33,6 @@ module systolic_buffer #(
     logic [COLS*DATA_WIDTH-1:0] b_feed_next;
     logic [COLS-1:0]            valid_b_next;
 
-    // Truncamiento seguro a 10 bits para el cálculo de skew diagonal
     logic signed [9:0] cycle_short;
     assign cycle_short = $signed(cycle_count[9:0]);
 
@@ -43,28 +42,29 @@ module systolic_buffer #(
         logic [K_IDX_W-1:0] a_idx;
         logic [K_IDX_W-1:0] b_idx;
 
-        // Mantener valores previos por defecto reduce la conmutación dinámica
+        a_k          = 10'sd0;
+        b_k          = 10'sd0;
+        a_idx        = '0;
+        b_idx        = '0;
         a_feed_next  = a_feed;
         b_feed_next  = b_feed;
         valid_a_next = '0;
         valid_b_next = '0;
 
         if (feed_enable) begin
-            // A: skew por fila con indexado acotado a K_IDX_W bits
             for (int r = 0; r < ROWS; r++) begin
                 a_k = cycle_short - 10'(r);
                 if ((a_k >= 10'sd0) && (a_k < 10'(K_DIM))) begin
-                    a_idx = K_IDX_W'(a_k);
+                    a_idx = a_k[K_IDX_W-1:0];
                     a_feed_next[r*DATA_WIDTH +: DATA_WIDTH] = a_mem[r][a_idx];
                     valid_a_next[r] = 1'b1;
                 end
             end
 
-            // B: skew por columna con indexado acotado a K_IDX_W bits
             for (int c = 0; c < COLS; c++) begin
                 b_k = cycle_short - 10'(c);
                 if ((b_k >= 10'sd0) && (b_k < 10'(K_DIM))) begin
-                    b_idx = K_IDX_W'(b_k);
+                    b_idx = b_k[K_IDX_W-1:0];
                     b_feed_next[c*DATA_WIDTH +: DATA_WIDTH] = b_mem[b_idx][c];
                     valid_b_next[c] = 1'b1;
                 end
@@ -72,7 +72,6 @@ module systolic_buffer #(
         end
     end
 
-    // Registro de salida con actualización condicionada (ahorro de energía)
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             a_feed  <= '0;
@@ -82,7 +81,6 @@ module systolic_buffer #(
         end else begin
             valid_a <= valid_a_next;
             valid_b <= valid_b_next;
-
             if (feed_enable) begin
                 a_feed <= a_feed_next;
                 b_feed <= b_feed_next;
@@ -90,7 +88,6 @@ module systolic_buffer #(
         end
     end
 
-    // Memoria de entrada con carga condicionada por 'load'
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (int r = 0; r < ROWS; r++) begin
@@ -98,7 +95,6 @@ module systolic_buffer #(
                     a_mem[r][k] <= '0;
                 end
             end
-
             for (int k = 0; k < K_DIM; k++) begin
                 for (int c = 0; c < COLS; c++) begin
                     b_mem[k][c] <= '0;
@@ -112,7 +108,6 @@ module systolic_buffer #(
                     );
                 end
             end
-
             for (int k = 0; k < K_DIM; k++) begin
                 for (int c = 0; c < COLS; c++) begin
                     b_mem[k][c] <= $signed(
@@ -125,15 +120,9 @@ module systolic_buffer #(
 
 `ifndef SYNTHESIS
     initial begin
-        if (DATA_WIDTH < 1 ||
-            ROWS < 1 ||
-            COLS < 1 ||
-            K_DIM < 1 ||
-            ROWS > 256 ||
-            COLS > 256 ||
-            K_DIM > 256) begin
+        if (DATA_WIDTH < 1 || ROWS < 1 || COLS < 1 || K_DIM < 1 ||
+            ROWS > 256 || COLS > 256 || K_DIM > 256)
             $fatal(1, "Invalid systolic_buffer parameters");
-        end
     end
 `endif
 
