@@ -15,30 +15,6 @@
     "CLOCK_PERIOD": 10.0,
     "PNR_SDC_FILE": "dir::../constraints/AINeuronX_N200.sdc",
     "SIGNOFF_SDC_FILE": "dir::../constraints/AINeuronX_N200.sdc",
-    "VDD_NETS": ["VDD"],
-    "GND_NETS": ["VSS"],
-    "STD_CELL_POWER_PINS": ["VDD"],
-    "STD_CELL_GROUND_PINS": ["VSS"],
-    "TECH_LEFS": {
-        "nom_*": "pdk_dir::libs.ref/ics55_LLSC_H7CR/techlef/ics55_LLSC_H7C_6M1T.tlef"
-    },
-    "CELL_LEFS": [
-        "pdk_dir::libs.ref/ics55_LLSC_H7CR/lef/ics55_LLSC_H7CR.lef"
-    ],
-    "LIB": {
-        "nom_*": [
-            "pdk_dir::libs.ref/ics55_LLSC_H7CR/lib/ics55_LLSC_H7CR_typ_tt_1p2_25_nldm.lib"
-        ]
-    },
-    "PRIMARY_GDSII_STREAMOUT_TOOL": "klayout",
-    "CELL_GDS": [
-        "pdk_dir::libs.ref/ics55_LLSC_H7CR/gds/ics55_LLSC_H7CR.gds"
-    ],
-    "FP_PDN_RAIL_LAYER": "M1",
-    "FP_PDN_VERTICAL_LAYER": "M5",
-    "FP_PDN_HORIZONTAL_LAYER": "M6",
-    "RT_MIN_LAYER": "M2",
-    "RT_MAX_LAYER": "M6",
     "FP_SIZING": "relative",
     "FP_CORE_UTIL": 50,
     "PL_TARGET_DENSITY_PCT": 58,
@@ -58,6 +34,14 @@
     "RUN_KLAYOUT_DRC": true,
     "RUN_KLAYOUT_XOR": false,
     "RUN_LVS": false,
+    "pdk::icsprout55": {
+        "FP_PDN_RAIL_LAYER": "M1",
+        "FP_PDN_RAIL_WIDTH": 0.14,
+        "FP_PDN_VERTICAL_LAYER": "M5",
+        "FP_PDN_HORIZONTAL_LAYER": "M6",
+        "RT_MIN_LAYER": "M2",
+        "RT_MAX_LAYER": "M6"
+    },
     "meta": {
         "substituting_steps": {
             "Magic.DRC": null,
