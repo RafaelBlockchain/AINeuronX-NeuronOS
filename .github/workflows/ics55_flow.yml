@@ -1,0 +1,41 @@
+name: AINeuronX N200 - ICS55 Physical Flow
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'openlane/**'
+      - 'constraints/**'
+  workflow_dispatch:
+
+jobs:
+  rtl2gds-ics55:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout AINeuronX-NeuronOS
+        uses: actions/checkout@v4
+
+      - name: Instalar ICsprout 55nm OpenPDK
+        run: |
+          git clone --depth 1 https://github.com $HOME/pdk_root
+          echo "PDK_ROOT=$HOME/pdk_root" >> $GITHUB_ENV
+          echo "PDK=icsprout55" >> $GITHUB_ENV
+          echo "PYTHONPATH=$HOME/pdk_root/icsprout55/libs.tech/librelane" >> $GITHUB_ENV
+
+      - name: Ejecutar flujo LibreLane (Síntesis + PnR + KLayout DRC/LVS)
+        uses: fossi-foundation/librelane-action@v0.1
+        with:
+          working-directory: openlane
+          arguments: --pdk icsprout55 --manual-pdk --run-tag ci_ics55 config.json
+
+      - name: Subir artefactos GDSII y reportes PPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: N200_Top-ICS55-Results
+          path: |
+            openlane/runs/ci_ics55/final/gds/*.gds
+            openlane/runs/ci_ics55/final/metrics.json
+            openlane/runs/ci_ics55/logs/
+            
