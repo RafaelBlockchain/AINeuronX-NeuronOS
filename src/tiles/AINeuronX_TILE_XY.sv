@@ -5,6 +5,7 @@ module AINeuronX_TILE_XY #(
 )(
     input  logic clk,
     input  logic rst_n,
+    input  logic enable,
 
     input  logic          n_valid, s_valid, e_valid, w_valid,
     input  logic [DW-1:0] n_data,  s_data,  e_data,  w_data,
@@ -14,15 +15,38 @@ module AINeuronX_TILE_XY #(
     output logic [DW-1:0] out_data
 );
 
-    logic core_valid;
-    logic core_ready;
-    logic [DW-1:0] core_data;
+    // Señales internas del Core Vectorial (4 carriles x 16 bits = 64 bits)
+    logic        core_in_valid;
+    logic        core_ready;
+    logic [63:0] vec_in_a;
+    logic [63:0] vec_in_b;
+    logic [63:0] vec_out;
+    logic [DW-1:0] core_reduced_data;
 
-    // CORE placeholder (inyección sintética)
-    assign core_valid = 1'b1;
-    assign core_data  = {X_ID[3:0], Y_ID[3:0], 8'hAA};
+    // Empaquetar tráfico Norte/Oeste como Vector A y Sur/Este como Vector B
+    assign core_in_valid = enable & (n_valid | w_valid | s_valid | e_valid);
+    assign vec_in_a = {n_data, w_data, n_data ^ {X_ID[3:0], Y_ID[3:0], 8'h55}, w_data};
+    assign vec_in_b = {s_data, e_data, s_data ^ {Y_ID[3:0], X_ID[3:0], 8'hAA}, e_data};
 
-    // ROUTER XY
+    // Instancia real del núcleo vectorial AINeuronX_N200_CORE
+    AINeuronX_N200_CORE #(
+        .DATA_WIDTH(DW),
+        .VECTOR_LANES(4)
+    ) u_core (
+        .clk             (clk),
+        .rst_n           (rst_n),
+        .valid_in        (core_in_valid),
+        .prefetch_enable (enable),
+        .input_a         (vec_in_a),
+        .input_b         (vec_in_b),
+        .ready_out       (core_ready),
+        .output_data     (vec_out)
+    );
+
+    // Reducción de los 4 carriles vectoriales (64 bits) a 1 palabra de red (16 bits)
+    assign core_reduced_data = vec_out[15:0] + vec_out[31:16] + vec_out[47:32] + vec_out[63:48];
+
+    // Router XY de 16 bits
     AINeuronX_NOC_ROUTER_XY #(
         .DW(DW),
         .X_ID(X_ID),
@@ -31,9 +55,9 @@ module AINeuronX_TILE_XY #(
         .clk(clk),
         .rst_n(rst_n),
 
-        .l_valid(core_valid),
-        .l_data(core_data),
-        .l_ready(core_ready),
+        .l_valid(core_ready),
+        .l_data(core_reduced_data),
+        .l_ready(),
 
         .n_valid(n_valid), .n_data(n_data), .n_ready(n_ready),
         .s_valid(s_valid), .s_data(s_data), .s_ready(s_ready),
@@ -42,20 +66,6 @@ module AINeuronX_TILE_XY #(
 
         .out_valid(out_valid),
         .out_data(out_data)
-    );
-
-    // =========================
-    // TELEMETRÍA HW POR TILE
-    // =========================
-    AINeuronX_TILE_METRICS metrics (
-        .clk(clk),
-        .rst_n(rst_n),
-        .mac_fire(core_valid & core_ready), // MAC realmente aceptado
-        .noc_send(out_valid),
-        .stall(core_valid & ~core_ready),
-        .mac_ops(),
-        .noc_packets(),
-        .stall_cycles()
     );
 
 endmodule
