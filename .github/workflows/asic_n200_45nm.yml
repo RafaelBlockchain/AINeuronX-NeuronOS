@@ -1,0 +1,27 @@
+name: AINeuronX N200 8x8 - FreePDK45 (250 MHz)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-n200-8x8:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/siliconcompiler/sc_runner:latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Ejecutar síntesis y Place & Route 8x8 (250 MHz)
+        run: python3 build_n200.py
+
+      - name: Guardar reportes y GDSII como artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aineuronx-n200-8x8-freepdk45-250mhz
+          path: build/
+          
