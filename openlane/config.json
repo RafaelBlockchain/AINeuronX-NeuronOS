@@ -13,21 +13,11 @@
         "dir::../src/noc/AINeuronX_NOC_ROUTER_XY.sv"
     ],
     "CLOCK_PORT": "pad_clk_main",
-    "CLOCK_NET": "u_pad_clk/p2c",
+    "CLOCK_NET": "core_clk_main",
     "CLOCK_PERIOD": 13.33,
     "FP_SIZING": "absolute",
-    "DIE_AREA": [
-        0,
-        0,
-        2000,
-        2000
-    ],
-    "CORE_AREA": [
-        350,
-        350,
-        1650,
-        1650
-    ],
+    "DIE_AREA":,
+    "CORE_AREA":,
     "PAD_NORTH": [
         "u_pad_vdd",
         "u_pad_vss",
@@ -42,42 +32,42 @@
         "u_pad_iovss"
     ],
     "PAD_WEST": [
-        "GEN_IN_PADS[0].u_pad_idata",
-        "GEN_IN_PADS[1].u_pad_idata",
-        "GEN_IN_PADS[2].u_pad_idata",
-        "GEN_IN_PADS[3].u_pad_idata",
-        "GEN_IN_PADS[4].u_pad_idata",
-        "GEN_IN_PADS[5].u_pad_idata",
-        "GEN_IN_PADS[6].u_pad_idata",
-        "GEN_IN_PADS[7].u_pad_idata",
-        "GEN_IN_PADS[8].u_pad_idata",
-        "GEN_IN_PADS[9].u_pad_idata",
-        "GEN_IN_PADS[10].u_pad_idata"
+        "u_pad_idata[0]",
+        "u_pad_idata[1]",
+        "u_pad_idata[2]",
+        "u_pad_idata[3]",
+        "u_pad_idata[4]",
+        "u_pad_idata[5]",
+        "u_pad_idata[6]",
+        "u_pad_idata[7]",
+        "u_pad_idata[8]",
+        "u_pad_idata[9]",
+        "u_pad_idata[10]"
     ],
     "PAD_SOUTH": [
-        "GEN_IN_PADS[11].u_pad_idata",
-        "GEN_IN_PADS[12].u_pad_idata",
-        "GEN_IN_PADS[13].u_pad_idata",
-        "GEN_IN_PADS[14].u_pad_idata",
-        "GEN_IN_PADS[15].u_pad_idata",
-        "GEN_OUT_PADS[0].u_pad_odata",
-        "GEN_OUT_PADS[1].u_pad_odata",
-        "GEN_OUT_PADS[2].u_pad_odata",
-        "GEN_OUT_PADS[3].u_pad_odata",
-        "GEN_OUT_PADS[4].u_pad_odata"
+        "u_pad_idata[11]",
+        "u_pad_idata[12]",
+        "u_pad_idata[13]",
+        "u_pad_idata[14]",
+        "u_pad_idata[15]",
+        "u_pad_odata[0]",
+        "u_pad_odata[1]",
+        "u_pad_odata[2]",
+        "u_pad_odata[3]",
+        "u_pad_odata[4]"
     ],
     "PAD_EAST": [
-        "GEN_OUT_PADS[5].u_pad_odata",
-        "GEN_OUT_PADS[6].u_pad_odata",
-        "GEN_OUT_PADS[7].u_pad_odata",
-        "GEN_OUT_PADS[8].u_pad_odata",
-        "GEN_OUT_PADS[9].u_pad_odata",
-        "GEN_OUT_PADS[10].u_pad_odata",
-        "GEN_OUT_PADS[11].u_pad_odata",
-        "GEN_OUT_PADS[12].u_pad_odata",
-        "GEN_OUT_PADS[13].u_pad_odata",
-        "GEN_OUT_PADS[14].u_pad_odata",
-        "GEN_OUT_PADS[15].u_pad_odata"
+        "u_pad_odata[5]",
+        "u_pad_odata[6]",
+        "u_pad_odata[7]",
+        "u_pad_odata[8]",
+        "u_pad_odata[9]",
+        "u_pad_odata[10]",
+        "u_pad_odata[11]",
+        "u_pad_odata[12]",
+        "u_pad_odata[13]",
+        "u_pad_odata[14]",
+        "u_pad_odata[15]"
     ],
     "PAD_CORNER": [
         "sg13g2_Corner"
@@ -107,3 +97,4 @@
     "MAGIC_RUN_LVS": false,
     "RUN_LVS": true
 }
+    
