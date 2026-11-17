@@ -70,6 +70,6 @@ module AINeuronX_ARRAY_32x32_NOC #(
     // Drenaje final desde la esquina inferior derecha (X-1, Y-1)
     assign out_valid = tile_out_valid[X-1][Y-1];
     assign out_data  = tile_out_data [X-1][Y-1];
-    assign in_ready  = array_enable & out_ready & n_ready;
-
+    assign in_ready  = array_enable & out_ready & n_ready[0][0];
+    
 endmodule
