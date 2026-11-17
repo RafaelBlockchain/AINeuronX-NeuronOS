@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'src/**'
-      - 'openlane/**'
+      - 'openlane/config_ics55.json'
       - 'constraints/**'
       - '.github/workflows/ics55_flow.yml'
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
         uses: fossi-foundation/librelane-action@v0.1
         with:
           working-directory: openlane
-          arguments: --pdk icsprout55 --manual-pdk --run-tag ci_ics55 config.json
+          arguments: --pdk icsprout55 --manual-pdk --run-tag ci_ics55 config_ics55.json
 
       - name: Subir artefactos GDSII y reportes PPA
         if: always()
