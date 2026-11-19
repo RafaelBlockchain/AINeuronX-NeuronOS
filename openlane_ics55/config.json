@@ -2,7 +2,7 @@
     "meta": {
         "version": 2,
         "flow": "Classic"
-    },
+    },   
     "DESIGN_NAME": "AINeuronX_N200_8x8_TOP",
     "VERILOG_FILES": [
         "dir::../src/top/AINeuronX_N200_8x8_TOP.sv",
