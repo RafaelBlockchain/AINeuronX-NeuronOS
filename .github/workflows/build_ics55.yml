@@ -5,31 +5,31 @@ on:
     paths:
       - 'src/**'
       - 'openlane_ics55/**'
-      - '.github/workflows/build_ics55.yml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
   rtl-to-gds-ics55:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/librelane/librelane:latest
+      image: ghcr.io/efabless/openlane2:latest
       options: --user root
 
     steps:
       - name: Clonar repositorio AINeuronX
         uses: actions/checkout@v4
 
-      - name: Instalar dependencias e ICsprout 55nm OpenPDK
+      - name: Instalar ICsprout 55nm OpenPDK
         run: |
           git clone --depth 1 https://github.com /tmp/icsprout55_pdk
           cd /tmp/icsprout55_pdk && bash ./install.sh
 
-      - name: Ejecutar flujo RTL-to-GDSII (LibreLane)
+      - name: Ejecutar flujo RTL-to-GDSII
         run: |
           export PDK_ROOT=/tmp/icsprout55_pdk
           export PDK=icsprout55
           export PYTHONPATH=$PDK_ROOT/$PDK/libs.tech/librelane${PYTHONPATH:+:$PYTHONPATH}
-          librelane --pdk icsprout55 openlane_ics55/config.json --manual-pdk
+          openlane --pdk icsprout55 openlane_ics55/config.json --manual-pdk
 
       - name: Publicar GDSII y reportes PPA
         uses: actions/upload-artifact@v4
