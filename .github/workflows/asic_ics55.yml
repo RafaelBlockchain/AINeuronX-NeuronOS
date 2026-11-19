@@ -1,0 +1,30 @@
+name: Build AINeuronX GDSII (ICsprout 55nm)
+on: [push, workflow_dispatch]
+
+jobs:
+  rtl-to-gds:
+    runs-on: ubuntu-latest
+    container:
+      image: factory.symbioticeda.com/asic-all:dev
+    steps:
+      - name: Checkout AINeuronX
+        uses: actions/checkout@v4
+
+      - name: Instalar ICsprout 55nm OpenPDK
+        run: |
+          git clone https://github.com /tmp/pdk
+          cd /tmp/pdk && bash ./install.sh
+
+      - name: Ejecutar Flujo RTL-to-GDSII
+        run: |
+          export PDK_ROOT=/tmp/pdk
+          export PDK=icsprout55
+          export PYTHONPATH=$PDK_ROOT/$PDK/libs.tech/librelane:$PYTHONPATH
+          librelane --pdk icsprout55 openlane_ics55/config.json --manual-pdk
+
+      - name: Subir GDSII y reportes
+        uses: actions/upload-artifact@v4
+        with:
+          name: AINeuronX-ICS55-GDSII
+          path: openlane_ics55/runs/*/final/
+          
