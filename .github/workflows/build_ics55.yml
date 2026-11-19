@@ -1,0 +1,41 @@
+name: Build AINeuronX N200 (ICsprout 55nm)
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'openlane_ics55/**'
+      - '.github/workflows/build_ics55.yml'
+  workflow_dispatch:
+
+jobs:
+  rtl-to-gds-ics55:
+    runs-on: ubuntu-latest
+    container:
+      image: ://symbioticeda.com
+
+    steps:
+      - name: Clonar repositorio AINeuronX
+        uses: actions/checkout@v4
+
+      - name: Instalar ICsprout 55nm OpenPDK
+        run: |
+          git clone --depth 1 https://github.com /tmp/icsprout55_pdk
+          cd /tmp/icsprout55_pdk && bash ./install.sh
+
+      - name: Ejecutar flujo RTL-to-GDSII (LibreLane / OpenLane 2)
+        run: |
+          export PDK_ROOT=/tmp/icsprout55_pdk
+          export PDK=icsprout55
+          export PYTHONPATH=$PDK_ROOT/$PDK/libs.tech/librelane:$PYTHONPATH
+          librelane --pdk icsprout55 openlane_ics55/config.json --manual-pdk
+
+      - name: Publicar GDSII y reportes PPA
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AINeuronX-N200-ICS55-GDSII
+          path: |
+            openlane_ics55/runs/*/final/
+            openlane_ics55/runs/*/reports/
+            
