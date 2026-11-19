@@ -1,1 +1,36 @@
+{
+    "meta": {
+        "version": 2,
+        "flow": "Classic"
+    },
+    "DESIGN_NAME": "AINeuronX_N200_8x8_TOP",
+    "VERILOG_FILES": [
+        "dir::../src/top/AINeuronX_N200_8x8_TOP.sv",
+        "dir::../src/array/AINeuronX_ARRAY_32x32_NOC.sv",
+        "dir::../src/tiles/AINeuronX_TILE_XY.sv",
+        "dir::../src/AINeuronX_N200_CORE.SV",
+        "dir::../src/noc/AINeuronX_NOC_ROUTER_XY.sv"
+    ],
+    "CLOCK_PORT": "clk_main",
+    "CLOCK_NET": "clk_main",
+    "CLOCK_PERIOD": 6.66,
+    "FP_SIZING": "relative",
+    "FP_CORE_UTIL": 45,
+    "RT_MAX_LAYER": "M5",
+    "PL_TARGET_DENSITY_PCT": 50,
+    "SYNTH_STRATEGY": "AREA 0",
+    "MAX_FANOUT_CONSTRAINT": 12,
+    "MAX_TRANSITION_CONSTRAINT": 0.5,
+    "PL_RESIZER_SETUP_SLACK_MARGIN": 0.1,
+    "GRT_RESIZER_SETUP_SLACK_MARGIN": 0.1,
+    "DRT_OPT_ITERS": 5,
+    "DRT_THREADS": 2,
+    "RUN_LINTER": false,
+    "RUN_CTS": true,
+    "RUN_KLAYOUT_DRC": true,
+    "RUN_KLAYOUT_XOR": false,
+    "RUN_MAGIC_DRC": false,
+    "MAGIC_RUN_LVS": false,
+    "RUN_LVS": true
+}
 
